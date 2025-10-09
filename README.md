@@ -74,6 +74,7 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    bin/draftsnap status --json
    ```
    You'll see initialization status, lock状態(`locked`) と exclude ガードが JSON にまとまって返ってきます。
+   ロック中に他コマンドを実行すると終了コード12と`{"message":"locked"}`で即時失敗します。
 
 13. Inspect the sidecar repository without touching the main repo:
    ```bash
