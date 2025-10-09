@@ -671,7 +671,7 @@ cmd_help() {
       IFS='|' read -r code desc <<<"$entry"
       printf '  %-3s %s\n' "$code" "$desc"
     done
-    printf '\nSee %s for agent-oriented guidance.\n' '`draftsnap prompt --json`'
+    printf '\nSee %sdraftsnap prompt --json%s for agent-oriented guidance.\n' '`' '`'
   fi
 }
 
