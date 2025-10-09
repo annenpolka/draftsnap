@@ -1,0 +1,13 @@
+# Draftsnap generated artifacts
+vendor/bats-core/
+.git-scratch/
+scratch/
+
+# Test harness caches
+/tests/tmp/
+/tests/output/
+
+# Editors
+.DS_Store
+*.swp
+*~
