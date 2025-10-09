@@ -48,7 +48,7 @@
 - [x] `.git/info/exclude`に`scratch/`と`.git-scratch/`が重複なく追記される。
 - [x] サイドカー側の追跡対象を明示するため、`.git-scratch/info/exclude`に`*`→`!<scr_dir>/`パターンを適用し、`status`がノイズレスであることを保証する。
 - [x] `status`が初期化済み/未済を正しく判定する。
-- [ ] `status`がロック中を正しく判定する。
+- [x] `status`がロック中を正しく判定する。
 - [x] `snap`が新規コンテンツでコミットを作成し、戻り値`0`とコミットIDを返す。
 - [x] `snap`が内容変更無しで`code=10`を返し、履歴を汚さない。
 - [x] `snap -`で標準入力を`scratch/stream-YYYYMMDD.md`に保存しコミット。

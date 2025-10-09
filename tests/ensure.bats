@@ -83,13 +83,14 @@ PY
   run draftsnap status --json
   [ "$status" -eq 0 ]
 
-  python3 - "$output" <<'PY'
+python3 - "$output" <<'PY'
 import json, sys
 payload = json.loads(sys.argv[1])
 data = payload["data"]
 assert data["initialized"] is False
 assert data["git_dir"] == ".git-scratch"
 assert data["scr_dir"] == "scratch"
+assert data["locked"] is False
 main = data["exclude"]["main"]
 side = data["exclude"]["sidecar"]
 assert main["git_dir"] is False
@@ -106,11 +107,12 @@ PY
   run draftsnap status --json
   [ "$status" -eq 0 ]
 
-  python3 - "$output" <<'PY'
+python3 - "$output" <<'PY'
 import json, sys
 payload = json.loads(sys.argv[1])
 data = payload["data"]
 assert data["initialized"] is True
+assert data["locked"] is False
 main = data["exclude"]["main"]
 side = data["exclude"]["sidecar"]
 assert main["git_dir"] is True
@@ -118,5 +120,18 @@ assert main["scr_dir"] is True
 assert side["wildcard"] is True
 assert side["scr_dir"] is True
 assert side["scr_glob"] is True
+PY
+}
+
+@test "status reports locked when lock directory exists" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+  mkdir -p .git-scratch/.draftsnap.lock
+  run draftsnap status --json
+  [ "$status" -eq 0 ]
+  python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert payload["data"]["locked"] is True
 PY
 }

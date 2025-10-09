@@ -42,7 +42,7 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ```bash
    bin/draftsnap status --json
    ```
-   You'll see initialization status plus exclude guards reflected in the JSON payload.
+   You'll see initialization status, lock状態(`locked`) と exclude ガードが JSON にまとまって返ってきます。
 
 8. Inspect the sidecar repository without touching the main repo:
    ```bash

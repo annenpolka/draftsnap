@@ -75,3 +75,17 @@ content = open(path).read()
 assert content == "stream draft"
 PY
 }
+
+@test "snap exits with code 12 when lock is held" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+  mkdir -p .git-scratch/.draftsnap.lock
+  run draftsnap snap scratch/locked.md -m "locked" --json
+  [ "$status" -eq 12 ]
+  python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert payload["code"] == 12
+assert payload["status"] == "error"
+PY
+}

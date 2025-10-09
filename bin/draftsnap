@@ -6,6 +6,9 @@ GIT_DIR=${DRAFTSNAP_GIT_DIR:-.git-scratch}
 WORK_TREE=${DRAFTSNAP_WORK_TREE:-.}
 JSON=0
 DEFAULT_MSG=""
+LOCK_DIR="$GIT_DIR/.draftsnap.lock"
+LOCK_HELD=0
+ENSURE_INITIALIZED=false
 
 fail() {
   echo "draftsnap: $*" >&2
@@ -25,16 +28,41 @@ git_side() {
   git --git-dir="$GIT_DIR" --work-tree="$WORK_TREE" "$@"
 }
 
+release_lock() {
+  if [[ ${LOCK_HELD:-0} -eq 1 ]]; then
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+    LOCK_HELD=0
+  fi
+}
+
+acquire_lock() {
+  if [[ ${LOCK_HELD:-0} -eq 1 ]]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$LOCK_DIR")"
+  if mkdir "$LOCK_DIR" 2>/dev/null; then
+    LOCK_HELD=1
+    trap release_lock EXIT
+    return 0
+  fi
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"error","code":12,"message":"locked"}\n'
+  else
+    echo "draftsnap: another process holds the lock" >&2
+  fi
+  exit 12
+}
+
 ensure_exclude_line() {
   local line="$1" file="$2"
   grep -Fxq "$line" "$file" 2>/dev/null && return
   printf '%s\n' "$line" >>"$file"
 }
 
-cmd_ensure() {
+ensure_repo() {
   local initialized=false
 
-  if [[ ! -d "$GIT_DIR" ]]; then
+  if [[ ! -d "$GIT_DIR" ]] || [[ ! -f "$GIT_DIR/HEAD" ]]; then
     git --git-dir="$GIT_DIR" --work-tree="$WORK_TREE" init --quiet
     initialized=true
   fi
@@ -54,16 +82,27 @@ cmd_ensure() {
   ensure_exclude_line "!$SCR_DIR/" "$side_exclude"
   ensure_exclude_line "!$SCR_DIR/**" "$side_exclude"
 
+  ENSURE_INITIALIZED=$initialized
+}
+
+cmd_ensure() {
+  acquire_lock
+  ensure_repo
+  local initialized=$ENSURE_INITIALIZED
   if [[ $JSON -eq 1 ]]; then
     printf '{"status":"ok","code":0,"data":{"initialized":%s,"git_dir":"%s","scr_dir":"%s"}}\n' "$(bool_json "$initialized")" "$GIT_DIR" "$SCR_DIR"
   else
     log "ensure completed"
   fi
+  release_lock
 }
 
 cmd_status() {
   local initialized=false
   [[ -d "$GIT_DIR" ]] && initialized=true
+
+  local locked=false
+  [[ -d "$LOCK_DIR" ]] && locked=true
 
   local main_exclude=".git/info/exclude"
   local main_git=false
@@ -87,6 +126,7 @@ cmd_status() {
     printf '{"status":"ok","code":0,"data":'
     printf '{"initialized":%s,' "$(bool_json "$initialized")"
     printf '"git_dir":"%s","scr_dir":"%s",' "$GIT_DIR" "$SCR_DIR"
+    printf '"locked":%s,' "$(bool_json "$locked")"
     printf '"exclude":'
     printf '{"main":{"git_dir":%s,"scr_dir":%s},' \
       "$(bool_json "$main_git")" "$(bool_json "$main_scr")"
@@ -94,7 +134,7 @@ cmd_status() {
       "$(bool_json "$side_wild")" "$(bool_json "$side_scr")" "$(bool_json "$side_glob")"
     printf '}}\n'
   else
-    log "initialized: $(bool_json "$initialized")"
+    log "initialized: $(bool_json "$initialized"), locked: $(bool_json "$locked")"
     log "main exclude - git_dir: $(bool_json "$main_git"), scr_dir: $(bool_json "$main_scr")"
     log "sidecar exclude - wildcard: $(bool_json "$side_wild"), scr_dir: $(bool_json "$side_scr"), scr_glob: $(bool_json "$side_glob")"
   fi
@@ -127,7 +167,8 @@ cmd_snap() {
 
   [[ -n "$path" ]] || fail "snap requires a target path"
 
-  cmd_ensure >/dev/null
+  acquire_lock
+  ensure_repo
 
   local abs_path="$WORK_TREE/$path"
   mkdir -p "$(dirname "$abs_path")"
@@ -144,6 +185,7 @@ cmd_snap() {
     if [[ $JSON -eq 1 ]]; then
       printf '{"status":"ok","code":10,"data":{"commit":null,"path":"%s","bytes":0}}\n' "$path"
     fi
+    release_lock
     return 10
   fi
 
@@ -160,6 +202,7 @@ cmd_snap() {
   else
     log "snap stored $path at $commit_hash"
   fi
+  release_lock
 }
 
 main() {
