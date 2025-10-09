@@ -88,10 +88,11 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
 - Extend `tests/` with failing Bats specs before touching `bin/draftsnap`.
 - Use environment variables to override defaults when needed:
   - `DRAFTSNAP_SCR_DIR` (default `scratch`)
-- `DRAFTSNAP_GIT_DIR` (default `.git-scratch`)
-- `DRAFTSNAP_WORK_TREE` (default `.`)
+  - `DRAFTSNAP_GIT_DIR` (default `.git-scratch`)
+  - `DRAFTSNAP_WORK_TREE` (default `.`)
 - Run `./scripts/check.sh` before commits; it runs shellcheck (if available) and the full Bats suite.
 - GitHub Actions (`.github/workflows/check.yml`) runs the same script on pushes and pull requests.
+- `draftsnap help` / `draftsnap prompt` summarize CLI behaviour and agent expectations; pass `--json` for structured output.
 
 ## Resources
 

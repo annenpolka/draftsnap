@@ -60,8 +60,8 @@
 - [x] `prune --keep 1`が古いコミットを`--archive`先へ書き出し、サイドカーから削除。
 - [x] 排他実行中(`flock`保持時)はコード12で待機せず失敗する。
 - [x] `shellcheck`/lintスクリプトを追加し、開発フローに組み込む。
-- [ ] `draftsnap help`コマンドでCLI/JSONヘルプを提供する。
-- [ ] `draftsnap prompt`でエージェント向けプロンプトを導出できるようにする。
+- [x] `draftsnap help`コマンドでCLI/JSONヘルプを提供する。
+- [x] `draftsnap prompt`でエージェント向けプロンプトを導出できるようにする。
 - [x] CI/自動テスト実行の雛形(ローカルorGitHub Actions)を整備する。
 
 ## 開発体制とワークフロー

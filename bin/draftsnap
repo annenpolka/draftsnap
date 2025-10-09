@@ -558,6 +558,76 @@ cmd_restore() {
   fi
 }
 
+cmd_help() {
+  local usage="Usage: draftsnap <command> [options]"
+  local entries=(
+    "ensure|Initialize or verify the draftsnap sidecar"
+    "status|Report initialization and lock status"
+    "snap|Capture a snapshot from a file or stdin"
+    "diff|Compare recent snapshots or the working tree"
+    "log|List snapshots with metadata"
+    "restore|Restore a file from a prior snapshot"
+    "prune|Trim old snapshots, optionally archiving"
+    "help|Show this summary"
+    "prompt|Emit agent guidance"
+  )
+  local names=()
+  local descriptions=()
+  local entry
+  for entry in "${entries[@]}"; do
+    IFS='|' read -r name desc <<<"$entry"
+    names+=("$name")
+    descriptions+=("$desc")
+  done
+
+  if [[ $JSON -eq 1 ]]; then
+    local commands_json="["
+    local first=1
+    local idx=0
+    for name in "${names[@]}"; do
+      if [[ $first -eq 0 ]]; then
+        commands_json+=","
+      fi
+      commands_json+="\"$(json_escape "$name")\""
+      first=0
+      ((idx++))
+    done
+    commands_json+="]"
+
+    local desc_json="{"
+    first=1
+    idx=0
+    for name in "${names[@]}"; do
+      if [[ $first -eq 0 ]]; then
+        desc_json+=","
+      fi
+      desc_json+="\"$(json_escape "$name")\":\"$(json_escape "${descriptions[$idx]}")\""
+      first=0
+      ((idx++))
+    done
+    desc_json+="}"
+
+    printf '{"status":"ok","code":0,"data":{"usage":"%s","commands":%s,"descriptions":%s}}\n' \
+      "$(json_escape "$usage")" "$commands_json" "$desc_json"
+  else
+    printf '%s\n\nCommands:\n' "$usage"
+    local idx=0
+    for name in "${names[@]}"; do
+      printf '  %-8s %s\n' "$name" "${descriptions[$idx]}"
+      ((idx++))
+    done
+  fi
+}
+
+cmd_prompt() {
+  local instructions="Always run \`draftsnap ensure --json\` once per session. Use \`draftsnap snap\` to capture work, \`draftsnap log\`/\`diff\` to inspect history, and \`draftsnap prune\`/\`restore\` for maintenance. Treat \`scripts/check.sh\` as the pre-push gate."
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"ok","code":0,"data":{"instructions":"%s"}}\n' "$(json_escape "$instructions")"
+  else
+    printf '%s\n' "$instructions"
+  fi
+}
+
 cmd_prune() {
   local keep=""
   local archive=""
@@ -753,6 +823,20 @@ main() {
         cmd_prune "${cmd_args[@]}"
       else
         cmd_prune
+      fi
+      ;;
+    help)
+      if ((${#cmd_args[@]})); then
+        cmd_help "${cmd_args[@]}"
+      else
+        cmd_help
+      fi
+      ;;
+    prompt)
+      if ((${#cmd_args[@]})); then
+        cmd_prompt "${cmd_args[@]}"
+      else
+        cmd_prompt
       fi
       ;;
     diff)
