@@ -55,3 +55,23 @@ assert payload["data"]["bytes"] == 0
 assert payload["status"] == "ok"
 PY
 }
+
+@test "snap dash captures stdin into stream file" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  run sh -c 'printf "stream draft" | draftsnap snap - -m "stdin note" --json'
+  [ "$status" -eq 0 ]
+
+  python3 - "$output" <<'PY'
+import json, sys, re, os
+payload = json.loads(sys.argv[1])
+path = payload["data"]["path"]
+assert path.startswith("scratch/stream-")
+assert path.endswith(".md")
+assert payload["data"]["bytes"] == 12
+assert payload["data"]["commit"]
+content = open(path).read()
+assert content == "stream draft"
+PY
+}

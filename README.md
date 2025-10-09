@@ -32,13 +32,19 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ```
    The JSON includes the commit hash, path, and stored byte size.
 
-6. Check draftsnap's view of the world:
+6. Stream content straight from stdin when you don't want an intermediate file:
+   ```bash
+   printf "adhoc" | bin/draftsnap snap - -m "stdin note" --json
+   ```
+   A timestamped `scratch/stream-*.md` file is created and committed automatically.
+
+7. Check draftsnap's view of the world:
    ```bash
    bin/draftsnap status --json
    ```
    You'll see initialization status plus exclude guards reflected in the JSON payload.
 
-7. Inspect the sidecar repository without touching the main repo:
+8. Inspect the sidecar repository without touching the main repo:
    ```bash
    git --git-dir=.git-scratch --work-tree=. status -sb
    ```
