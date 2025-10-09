@@ -187,7 +187,8 @@ cmd_snap() {
 
   local target_path
   if [[ "$path" == "-" ]]; then
-    local stream_name="stream-$(date +%Y%m%d%H%M%S).md"
+    local stream_name
+    stream_name="stream-$(date +%Y%m%d%H%M%S).md"
     if [[ -n "$space" ]]; then
       target_path="$SCR_DIR/$space/$stream_name"
     else
@@ -285,7 +286,7 @@ cmd_log() {
     if [[ "$entries_json" == "[]" ]]; then
       entries_json="[$json_entry]"
     else
-      entries_json="${entries_json%]},"$json_entry"]"
+      entries_json="${entries_json%]},$json_entry]"
     fi
     human_lines+=("$(printf '%s %s %s' "$commit" "$path" "$subject")")
   }
@@ -424,7 +425,7 @@ cmd_diff() {
       if [[ "$entries_json" == "[]" ]]; then
         entries_json="[$entry_json]"
       else
-        entries_json="${entries_json%]},"$entry_json"]"
+        entries_json="${entries_json%]},$entry_json]"
       fi
       human_lines+=("$(printf '%s +%s -%s' "$file" "$added" "$removed")")
     done <<<"$numstat_output"
@@ -670,7 +671,7 @@ cmd_help() {
       IFS='|' read -r code desc <<<"$entry"
       printf '  %-3s %s\n' "$code" "$desc"
     done
-    printf '\nSee `draftsnap prompt --json` for agent-oriented guidance.\n'
+    printf '\nSee %s for agent-oriented guidance.\n' '`draftsnap prompt --json`'
   fi
 }
 
@@ -785,7 +786,8 @@ cmd_prune() {
     fail "failed to clone sidecar for pruning"
   fi
 
-  local backup_git="$GIT_DIR.prune.bak.$(date +%s)"
+  local backup_git
+  backup_git="$GIT_DIR.prune.bak.$(date +%s)"
   mv "$GIT_DIR" "$backup_git"
   mv "$tmpdir/clone/.git" "$GIT_DIR"
   rm -rf "$tmpdir/clone"
