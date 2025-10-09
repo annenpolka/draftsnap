@@ -35,7 +35,9 @@ PY
 @test "prompt emits agent guidance" {
   run draftsnap prompt
   [ "$status" -eq 0 ]
-  [[ "$output" == *"draftsnap ensure"* ]]
+  [[ "$output" == *"draftsnap ensure --json"* ]]
+  [[ "$output" == *"draftsnap snap"* ]]
+  [[ "$output" == *"draftsnap prune"* ]]
 }
 
 @test "prompt --json returns structured instructions" {
@@ -46,6 +48,8 @@ import json, sys
 payload = json.loads(sys.argv[1])
 assert payload["status"] == "ok"
 text = payload["data"].get("instructions", "")
-assert "draftsnap ensure" in text
+assert "draftsnap ensure --json" in text
+assert "draftsnap snap" in text
+assert "draftsnap prune" in text
 PY
 }

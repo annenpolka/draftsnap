@@ -620,7 +620,7 @@ cmd_help() {
 }
 
 cmd_prompt() {
-  local instructions="Always run \`draftsnap ensure --json\` once per session. Use \`draftsnap snap\` to capture work, \`draftsnap log\`/\`diff\` to inspect history, and \`draftsnap prune\`/\`restore\` for maintenance. Treat \`scripts/check.sh\` as the pre-push gate."
+  local instructions="Always start a session with \`draftsnap ensure --json\` to (re)initialise the sidecar (exit code 12 = locked). Capture drafts via \`draftsnap snap\` — exit code 10 means no changes — and inspect history with \`draftsnap log\`, \`draftsnap diff\`, and \`draftsnap status\`. Maintain hygiene with \`draftsnap prune --keep N [--archive DIR]\` and recover content using \`draftsnap restore <rev> -- <path>\`. Treat \`scripts/check.sh\` (shellcheck + bats) as the pre-push gate and prefer \`--json\` for machine-friendly responses."
   if [[ $JSON -eq 1 ]]; then
     printf '{"status":"ok","code":0,"data":{"instructions":"%s"}}\n' "$(json_escape "$instructions")"
   else
