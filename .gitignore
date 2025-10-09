@@ -12,3 +12,4 @@ report.tap
 .DS_Store
 *.swp
 *~
+dist/

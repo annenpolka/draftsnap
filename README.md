@@ -86,9 +86,9 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
 
 ### Download from GitHub Releases
 
-1. Pick a version (replace `0.4.0` below as needed) and download the single-file binary:
+1. Pick a version (replace `0.1.0` below as needed) and download the single-file binary:
    ```bash
-   ver="0.4.0"
+   ver="0.1.0"
    base="https://github.com/annenpolka/draftsnap/releases/download/v${ver}"
    curl -sSLo /tmp/draftsnap "$base/draftsnap"
    curl -sSL "$base/draftsnap.sha256" | shasum -a 256 --check -
@@ -102,14 +102,14 @@ Add a portable binary source to `.mise.toml`:
 
 ```toml
 [tools]
-draftsnap = { source = "https://github.com/annenpolka/draftsnap/releases/download/v0.4.0/draftsnap" }
+draftsnap = { source = "https://github.com/annenpolka/draftsnap/releases/download/v0.1.0/draftsnap" }
 ```
 
 Then run:
 
 ```bash
 mise install
-mise use draftsnap@0.4.0
+mise use draftsnap@0.1.0
 ```
 
 ### Use the bundled mise plugin
@@ -118,8 +118,8 @@ An official plugin lives on the `mise-plugin` branch of this repository. Install
 
 ```bash
 mise plugin add draftsnap https://github.com/annenpolka/draftsnap.git#mise-plugin
-mise install draftsnap@0.4.0   # or @latest
-mise use draftsnap@0.4.0
+mise install draftsnap@0.1.0   # or @latest
+mise use draftsnap@0.1.0
 ```
 
 The plugin downloads the matching GitHub Release binary into mise’s tool cache.
@@ -141,3 +141,27 @@ The plugin downloads the matching GitHub Release binary into mise’s tool cache
 - Work plan and backlog: `work-plan.md`
 - Bats bootstrap strategy: `docs/bats-strategy.md`
 - Current feature overview and prompts: `project-summary.md`
+
+## Release Process
+
+Releases are cut from the `main` branch.
+
+1. Ensure logs/tests are up to date (`./scripts/check.sh`).
+2. Build the release binary (example) and checksum:
+   ```bash
+   rm -rf dist && mkdir dist
+   cp bin/draftsnap dist/draftsnap
+   shasum -a 256 dist/draftsnap > dist/draftsnap.sha256
+   ```
+3. Tag and push:
+   ```bash
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+4. Publish GitHub Release (preferably automated via `gh`):
+   ```bash
+   gh release create v0.1.0 dist/draftsnap dist/draftsnap.sha256 \
+     --title "draftsnap v0.1.0" \
+     --notes "Short notes about the release"
+   ```
+5. Clean up local `dist/` if desired (`rm -rf dist`).
