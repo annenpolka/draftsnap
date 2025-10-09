@@ -464,6 +464,100 @@ cmd_diff() {
   fi
 }
 
+cmd_restore() {
+  local rev=""
+  local path=""
+  local args=("$@")
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    local token=${args[$i]}
+    if [[ "$token" == "--" ]]; then
+      ((i++))
+      continue
+    fi
+    if [[ -z "$rev" ]]; then
+      rev="$token"
+    elif [[ -z "$path" ]]; then
+      path="$token"
+    else
+      fail "unexpected argument: $token"
+    fi
+    ((i++))
+  done
+
+  [[ -n "$rev" ]] || fail "restore requires a revision"
+  [[ -n "$path" ]] || fail "restore requires -- <path>"
+
+  acquire_lock
+  ensure_repo
+
+  local rev_sha
+  if ! rev_sha=$(git_side rev-parse --verify "$rev" 2>/dev/null); then
+    release_lock
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"error","code":14,"message":"unknown revision: %s"}\n' "$(json_escape "$rev")"
+    else
+      echo "draftsnap: unknown revision: $rev" >&2
+    fi
+    exit 14
+  fi
+
+  local tmpfile
+  tmpfile=$(mktemp)
+  if ! git_side show "${rev_sha}:${path}" >"$tmpfile" 2>/dev/null; then
+    rm -f "$tmpfile"
+    release_lock
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"error","code":14,"message":"path not found in revision"}\n'
+    else
+      echo "draftsnap: path not found in revision" >&2
+    fi
+    exit 14
+  fi
+
+  local dest="$WORK_TREE/$path"
+  mkdir -p "$(dirname "$dest")"
+
+  local backup=""
+  if [[ -f "$dest" ]]; then
+    if ! cmp -s "$dest" "$tmpfile"; then
+      backup="${dest}.draftsnap.bak.$(date +%Y%m%d%H%M%S)"
+      cp "$dest" "$backup"
+    fi
+  fi
+
+  mv "$tmpfile" "$dest"
+
+  local bytes
+  bytes=$(wc -c <"$dest")
+  bytes=${bytes//[[:space:]]/}
+
+  local warnings_json="[]"
+  local human_warn=()
+  if [[ -n "$backup" ]]; then
+    warnings_json=$(printf '["%s"]' "$(json_escape "existing file differed; backup stored at $backup")")
+    human_warn+=("backup saved to $backup")
+  fi
+
+  release_lock
+
+  if [[ $JSON -eq 1 ]]; then
+    local backup_json
+    if [[ -n "$backup" ]]; then
+      backup_json="\"$(json_escape "$backup")\""
+    else
+      backup_json="null"
+    fi
+    printf '{"status":"ok","code":0,"data":{"path":"%s","bytes":%s,"rev":"%s","backup":%s},"warnings":%s}\n' \
+      "$(json_escape "$path")" "$bytes" "$rev_sha" "$backup_json" "$warnings_json"
+  else
+    echo "restored $path from $rev_sha"
+    if ((${#human_warn[@]})); then
+      printf '%s\n' "${human_warn[@]}" >&2
+    fi
+  fi
+}
+
 main() {
   local cmd=""
   local cmd_args=()
@@ -523,6 +617,13 @@ main() {
         cmd_log "${cmd_args[@]}"
       else
         cmd_log
+      fi
+      ;;
+    restore)
+      if ((${#cmd_args[@]})); then
+        cmd_restore "${cmd_args[@]}"
+      else
+        cmd_restore
       fi
       ;;
     snap)
