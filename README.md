@@ -45,13 +45,19 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ```
    The commit subject will include `[space:specs]` for easier filtering.
 
-8. Check draftsnap's view of the world:
+8. Review history with `log`:
+   ```bash
+   bin/draftsnap log --json
+   ```
+   Returns recent snapshots (newest first) with commit id, timestamp, message, and path. Omit `--json` for human-readable lines.
+
+9. Check draftsnap's view of the world:
    ```bash
    bin/draftsnap status --json
    ```
    You'll see initialization status, lock状態(`locked`) と exclude ガードが JSON にまとまって返ってきます。
 
-9. Inspect the sidecar repository without touching the main repo:
+10. Inspect the sidecar repository without touching the main repo:
    ```bash
    git --git-dir=.git-scratch --work-tree=. status -sb
    ```

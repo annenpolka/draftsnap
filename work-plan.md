@@ -53,7 +53,8 @@
 - [x] `snap`が内容変更無しで`code=10`を返し、履歴を汚さない。
 - [x] `snap -`で標準入力を`scratch/stream-YYYYMMDD.md`に保存しコミット。
 - [x] `snap --space NAME`で`scratch/<NAME>/`へ格納し、コミットメッセージに`[space:NAME]`を付与する。
-- [ ] `log`が`--json`時に時系列ソート済み配列を返す。
+- [x] `log`が`--json`時に時系列ソート済み配列を返す。
+- [x] `log`が人間向けの行リストを出力する。
 - [ ] `diff`がデフォルト`HEAD`比較と`rev`指定の両方をサポート。
 - [ ] `restore`が既存ファイルを上書きし、バックアップ警告を発行。
 - [ ] `prune --keep 1`が古いコミットを`--archive`先へ書き出し、サイドカーから削除。

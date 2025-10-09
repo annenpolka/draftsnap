@@ -28,6 +28,16 @@ git_side() {
   git --git-dir="$GIT_DIR" --work-tree="$WORK_TREE" "$@"
 }
 
+json_escape() {
+  local s=${1:-}
+  s=${s//\\/\\\\}
+  s=${s//\"/\\\"}
+  s=${s//$'\n'/\\n}
+  s=${s//$'\r'/\\r}
+  s=${s//$'\t'/\\t}
+  printf '%s' "$s"
+}
+
 release_lock() {
   if [[ ${LOCK_HELD:-0} -eq 1 ]]; then
     rmdir "$LOCK_DIR" 2>/dev/null || true
@@ -204,7 +214,7 @@ cmd_snap() {
     : >"$abs_path"
   fi
 
-  git_side add "$target_path"
+  git_side add -f "$target_path"
 
   if git_side diff --staged --quiet; then
     if [[ $JSON -eq 1 ]]; then
@@ -232,6 +242,78 @@ cmd_snap() {
     log "snap stored $target_path at $commit_hash"
   fi
   release_lock
+}
+
+cmd_log() {
+  if [[ ! -d "$GIT_DIR" ]] || [[ ! -f "$GIT_DIR/HEAD" ]]; then
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"ok","code":0,"data":{"entries":[]}}'"\n"
+    fi
+    return 0
+  fi
+
+  if ! git_side rev-parse --verify HEAD >/dev/null 2>&1; then
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"ok","code":0,"data":{"entries":[]}}\n'
+    fi
+    return 0
+  fi
+
+  local format=$'%H\x1f%ad\x1f%s'
+  local log_output
+  if ! log_output=$(git_side log --date=iso-strict --pretty=format:"$format" --name-only); then
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"error","code":14,"message":"failed to read log"}\n'
+    else
+      echo "draftsnap: failed to read log" >&2
+    fi
+    return 14
+  fi
+
+  local entries_json="[]"
+  local human_lines=()
+  local commit="" timestamp="" subject="" filepath=""
+
+  append_entry() {
+    if [[ -z "$commit" ]]; then
+      return
+    fi
+    local path="${filepath:-}"
+    local json_entry
+    json_entry=$(printf '{"commit":"%s","timestamp":"%s","message":"%s","path":"%s"}' \
+      "$commit" "$(json_escape "$timestamp")" "$(json_escape "$subject")" "$(json_escape "$path")")
+    if [[ "$entries_json" == "[]" ]]; then
+      entries_json="[$json_entry]"
+    else
+      entries_json="${entries_json%]},"$json_entry"]"
+    fi
+    human_lines+=("$(printf '%s %s %s' "$commit" "$path" "$subject")")
+  }
+
+  while IFS= read -r line; do
+    if [[ -z "$line" ]]; then
+      append_entry
+      commit="" timestamp="" subject="" filepath=""
+      continue
+    fi
+    if [[ "$line" == *$'\x1f'* ]]; then
+      IFS=$'\x1f' read -r commit timestamp subject <<<"$line"
+      continue
+    fi
+    if [[ -z "$filepath" ]]; then
+      filepath="$line"
+    fi
+  done <<<"$log_output"
+  append_entry
+
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"ok","code":0,"data":{"entries":%s}}' "$entries_json"
+    printf '\n'
+  else
+    if ((${#human_lines[@]})); then
+      printf '%s\n' "${human_lines[@]}" | sed '/^$/d'
+    fi
+  fi
 }
 
 main() {
@@ -279,6 +361,13 @@ main() {
         cmd_status "${cmd_args[@]}"
       else
         cmd_status
+      fi
+      ;;
+    log)
+      if ((${#cmd_args[@]})); then
+        cmd_log "${cmd_args[@]}"
+      else
+        cmd_log
       fi
       ;;
     snap)
