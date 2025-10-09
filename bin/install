@@ -22,4 +22,4 @@ chmod +x "$TMP_FILE"
 mkdir -p "$INSTALL_PATH/bin"
 install -m 0755 "$TMP_FILE" "$INSTALL_PATH/bin/${ASSET_NAME}"
 
-printf 'Installed %s %s to %s\n' "$PLUGIN_NAME" "$VERSION" "$INSTALL_PATH"
+echo "Installed ${PLUGIN_NAME} ${VERSION} to ${INSTALL_PATH}"
