@@ -134,4 +134,5 @@ import json, sys
 payload = json.loads(sys.argv[1])
 assert payload["data"]["locked"] is True
 PY
+  rm -rf .git-scratch/.draftsnap.lock
 }

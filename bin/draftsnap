@@ -144,6 +144,7 @@ cmd_snap() {
   local path=""
   local message="$DEFAULT_MSG"
   local stdin_mode=false
+  local space=""
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -151,12 +152,16 @@ cmd_snap() {
         shift || fail "missing argument for -m"
         message="$1"
         ;;
+      --space)
+        shift || fail "missing argument for --space"
+        space="$1"
+        ;;
       --json)
         JSON=1
         ;;
       -)
         stdin_mode=true
-        path="$SCR_DIR/stream-$(date +%Y%m%d%H%M%S).md"
+        path="-"
         ;;
       *)
         path="$1"
@@ -170,7 +175,27 @@ cmd_snap() {
   acquire_lock
   ensure_repo
 
-  local abs_path="$WORK_TREE/$path"
+  local target_path
+  if [[ "$path" == "-" ]]; then
+    local stream_name="stream-$(date +%Y%m%d%H%M%S).md"
+    if [[ -n "$space" ]]; then
+      target_path="$SCR_DIR/$space/$stream_name"
+    else
+      target_path="$SCR_DIR/$stream_name"
+    fi
+  else
+    if [[ "$path" == /* ]]; then
+      target_path="$path"
+    elif [[ "$path" == "$SCR_DIR"/* ]]; then
+      target_path="$path"
+    elif [[ -n "$space" ]]; then
+      target_path="$SCR_DIR/$space/$path"
+    else
+      target_path="$SCR_DIR/$path"
+    fi
+  fi
+
+  local abs_path="$WORK_TREE/$target_path"
   mkdir -p "$(dirname "$abs_path")"
 
   if $stdin_mode; then
@@ -179,17 +204,21 @@ cmd_snap() {
     : >"$abs_path"
   fi
 
-  git_side add "$path"
+  git_side add "$target_path"
 
   if git_side diff --staged --quiet; then
     if [[ $JSON -eq 1 ]]; then
-      printf '{"status":"ok","code":10,"data":{"commit":null,"path":"%s","bytes":0}}\n' "$path"
+      printf '{"status":"ok","code":10,"data":{"commit":null,"path":"%s","bytes":0}}\n' "$target_path"
     fi
     release_lock
     return 10
   fi
 
-  local final_message=${message:-"snap: $path"}
+  local base_message=${message:-"snap: $target_path"}
+  local final_message="$base_message"
+  if [[ -n "$space" ]]; then
+    final_message="[space:${space}] $base_message"
+  fi
   git_side commit --quiet -m "$final_message"
   local commit_hash
   commit_hash=$(git_side rev-parse HEAD)
@@ -198,9 +227,9 @@ cmd_snap() {
   size=${size//[[:space:]]/}
 
   if [[ $JSON -eq 1 ]]; then
-    printf '{"status":"ok","code":0,"data":{"commit":"%s","path":"%s","bytes":%s}}\n' "$commit_hash" "$path" "$size"
+    printf '{"status":"ok","code":0,"data":{"commit":"%s","path":"%s","bytes":%s}}\n' "$commit_hash" "$target_path" "$size"
   else
-    log "snap stored $path at $commit_hash"
+    log "snap stored $target_path at $commit_hash"
   fi
   release_lock
 }

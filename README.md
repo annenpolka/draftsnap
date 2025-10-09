@@ -38,13 +38,20 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ```
    A timestamped `scratch/stream-*.md` file is created and committed automatically.
 
-7. Check draftsnap's view of the world:
+7. Group related drafts with `--space` (adds under `scratch/<space>/` and tags the commit message):
+   ```bash
+   echo "feature outline" > scratch/specs/feature.md
+   bin/draftsnap snap feature.md --space specs -m "outline" --json
+   ```
+   The commit subject will include `[space:specs]` for easier filtering.
+
+8. Check draftsnap's view of the world:
    ```bash
    bin/draftsnap status --json
    ```
    You'll see initialization status, lock状態(`locked`) と exclude ガードが JSON にまとまって返ってきます。
 
-8. Inspect the sidecar repository without touching the main repo:
+9. Inspect the sidecar repository without touching the main repo:
    ```bash
    git --git-dir=.git-scratch --work-tree=. status -sb
    ```
