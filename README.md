@@ -96,34 +96,6 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ```
 2. Optionally keep older versions side-by-side (e.g., `~/.local/bin/draftsnap-0.3.0`) and flip a symlink for fast rollback.
 
-### Use mise without a custom plugin
-
-Add a portable binary source to `.mise.toml`:
-
-```toml
-[tools]
-draftsnap = { source = "https://github.com/annenpolka/draftsnap/releases/download/v0.1.0/draftsnap" }
-```
-
-Then run:
-
-```bash
-mise install
-mise use draftsnap@0.1.0
-```
-
-### Use the bundled mise plugin
-
-An official plugin lives on the `mise-plugin` branch of this repository. Install it directly:
-
-```bash
-mise plugin add draftsnap https://github.com/annenpolka/draftsnap.git#mise-plugin
-mise install draftsnap@0.1.0   # or @latest
-mise use draftsnap@0.1.0
-```
-
-The plugin downloads the matching GitHub Release binary into mise’s tool cache.
-
 ## Development Flow
 
 - Follow the Red-Green-Refactor (TDD) loop documented in `AGENTS.md` / `work-plan.md`.
