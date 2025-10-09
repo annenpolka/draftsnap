@@ -42,6 +42,9 @@
 ## 初期テストリスト
 - [ ] `ensure`が未初期化環境で`.git-scratch`と`scratch/`を作成し、JSONに`initialized:true`を返す。
 - [ ] `ensure`を再実行しても副作用がなく、`initialized:false`かつ`code=0`で成功する。
+- [ ] `ensure`が既存`DRAFTSNAP_SCR_DIR`・`DRAFTSNAP_GIT_DIR`環境変数を尊重して初期化する。
+- [ ] `ensure --json`が `{status, code, data}` を含む安定したスキーマを返す。
+- [ ] `ensure`が`.git/info/exclude`を冪等に更新し、重複行を出力しない。
 - [ ] `.git/info/exclude`に`scratch/`と`.git-scratch/`が重複なく追記される。
 - [ ] `status`が初期化済み/未済/ロック中を正しく判定する。
 - [ ] `snap`が新規コンテンツでコミットを作成し、戻り値`0`とコミットIDを返す。

@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCR_DIR=${DRAFTSNAP_SCR_DIR:-scratch}
+GIT_DIR=${DRAFTSNAP_GIT_DIR:-.git-scratch}
+WORK_TREE=${DRAFTSNAP_WORK_TREE:-.}
+JSON=0
+
+fail() {
+  echo "draftsnap: $*" >&2
+  exit 1
+}
+
+log() {
+  [[ $JSON -eq 1 ]] && return
+  echo "$*" >&2
+}
+
+bool_json() {
+  [[ "$1" == "true" ]] && printf 'true' || printf 'false'
+}
+
+ensure_exclude_line() {
+  local line="$1" file="$2"
+  grep -Fxq "$line" "$file" 2>/dev/null && return
+  printf '%s\n' "$line" >>"$file"
+}
+
+cmd_ensure() {
+  local initialized=false
+
+  if [[ ! -d "$GIT_DIR" ]]; then
+    git --git-dir="$GIT_DIR" --work-tree="$WORK_TREE" init --quiet
+    initialized=true
+  fi
+
+  mkdir -p "$SCR_DIR"
+
+  local exclude_file=".git/info/exclude"
+  mkdir -p "$(dirname "$exclude_file")"
+  touch "$exclude_file"
+  ensure_exclude_line "$SCR_DIR/" "$exclude_file"
+  ensure_exclude_line "$GIT_DIR/" "$exclude_file"
+
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"ok","code":0,"data":{"initialized":%s,"git_dir":"%s","scr_dir":"%s"}}\n' "$(bool_json "$initialized")" "$GIT_DIR" "$SCR_DIR"
+  else
+    log "ensure completed"
+  fi
+}
+
+main() {
+  local cmd=""
+  local cmd_args=()
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --json)
+        JSON=1
+        ;;
+      --)
+        shift
+        cmd_args+=("$@")
+        break
+        ;;
+      -* )
+        cmd_args+=("$1")
+        ;;
+      *)
+        if [[ -z "$cmd" ]]; then
+          cmd="$1"
+        else
+          cmd_args+=("$1")
+        fi
+        ;;
+    esac
+    shift || break
+  done
+
+  case "$cmd" in
+    ensure)
+      if ((${#cmd_args[@]})); then
+        cmd_ensure "${cmd_args[@]}"
+      else
+        cmd_ensure
+      fi
+      ;;
+    "")
+      fail "no command specified"
+      ;;
+    *)
+      fail "unknown command: $cmd"
+      ;;
+  esac
+}
+
+main "$@"
