@@ -51,13 +51,19 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ```
    Returns recent snapshots (newest first) with commit id, timestamp, message, and path. Omit `--json` for human-readable lines.
 
-9. Check draftsnap's view of the world:
+9. Compare snapshots with `diff` without remembering hashes:
+   ```bash
+   bin/draftsnap diff --json
+   ```
+   By default compares the latest snapshot against its predecessor. Use `--since N` to look N commits back, or `--current` to compare the working tree against the latest snapshot. Human mode prints the raw diff.
+
+10. Check draftsnap's view of the world:
    ```bash
    bin/draftsnap status --json
    ```
    You'll see initialization status, lock状態(`locked`) と exclude ガードが JSON にまとまって返ってきます。
 
-10. Inspect the sidecar repository without touching the main repo:
+11. Inspect the sidecar repository without touching the main repo:
    ```bash
    git --git-dir=.git-scratch --work-tree=. status -sb
    ```

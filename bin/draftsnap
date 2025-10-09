@@ -316,6 +316,154 @@ cmd_log() {
   fi
 }
 
+cmd_diff() {
+  if ! git_side rev-parse --verify HEAD >/dev/null 2>&1; then
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"ok","code":0,"data":{"basis":{"type":"none"},"entries":[]}}'"\n"
+    fi
+    return 0
+  fi
+
+  local since="" use_current=0
+  local pathspec=()
+  local args=("$@")
+  local i=0
+  while [[ $i -lt ${#args[@]} ]]; do
+    local token=${args[$i]}
+    case "$token" in
+      --since)
+        ((i++))
+        if [[ $i -ge ${#args[@]} ]]; then
+          fail "--since requires an argument"
+        fi
+        since=${args[$i]}
+        ;;
+      --current)
+        use_current=1
+        ;;
+      --)
+        ((i++))
+        while [[ $i -lt ${#args[@]} ]]; do
+          pathspec+=("${args[$i]}")
+          ((i++))
+        done
+        break
+        ;;
+      *)
+        pathspec+=("$token")
+        ;;
+    esac
+    ((i++))
+  done
+
+  local diff_args=()
+  local basis_type="" basis_new="" basis_old="" basis_since=""
+
+  if [[ $use_current -eq 1 ]]; then
+    basis_type="current"
+    basis_new="working"
+    basis_old=$(git_side rev-parse HEAD)
+    diff_args=(HEAD)
+  else
+    local head_commit
+    head_commit=$(git_side rev-parse HEAD)
+    local offset=${since:-1}
+    if [[ -z "$since" ]]; then
+      # require at least two commits
+      if ! git_side rev-parse HEAD^ >/dev/null 2>&1; then
+        if [[ $JSON -eq 1 ]]; then
+          printf '{"status":"ok","code":0,"data":{"basis":{"type":"latest_pair","new":"%s","old":null},"entries":[]}}\n' "$head_commit"
+        fi
+        return 0
+      fi
+      basis_type="latest_pair"
+    else
+      if ! [[ "$offset" =~ ^[0-9]+$ ]]; then
+        fail "--since expects a non-negative integer"
+      fi
+      if [[ "$offset" -lt 1 ]]; then
+        fail "--since must be >= 1"
+      fi
+      basis_type="since"
+      basis_since="$offset"
+    fi
+
+    local base_ref
+    if ! base_ref=$(git_side rev-parse "HEAD~$offset" 2>/dev/null); then
+      if [[ $JSON -eq 1 ]]; then
+        printf '{"status":"ok","code":0,"data":{"basis":{"type":"%s","new":"%s","old":null},"entries":[]}}\n' "$basis_type" "$head_commit"
+      fi
+      return 0
+    fi
+
+    basis_new="$head_commit"
+    basis_old="$base_ref"
+    diff_args=("$base_ref" "$head_commit")
+  fi
+
+  if ((${#pathspec[@]})); then
+    diff_args+=(-- "${pathspec[@]}")
+  fi
+
+  local numstat_output
+  if [[ $use_current -eq 1 ]]; then
+    numstat_output=$(git_side diff --numstat "${diff_args[@]}" || true)
+  else
+    numstat_output=$(git_side diff --numstat "${diff_args[@]}" || true)
+  fi
+
+  local entries_json="[]"
+  local human_lines=()
+  if [[ -n "$numstat_output" ]]; then
+    while IFS=$'\t' read -r added removed file; do
+      [[ -z "$file" ]] && continue
+      [[ "$added" == "-" ]] && added=0
+      [[ "$removed" == "-" ]] && removed=0
+      local entry_json
+      entry_json=$(printf '{"path":"%s","added":%s,"removed":%s}' "$(json_escape "$file")" "$added" "$removed")
+      if [[ "$entries_json" == "[]" ]]; then
+        entries_json="[$entry_json]"
+      else
+        entries_json="${entries_json%]},"$entry_json"]"
+      fi
+      human_lines+=("$(printf '%s +%s -%s' "$file" "$added" "$removed")")
+    done <<<"$numstat_output"
+  fi
+
+  local diff_patch
+  if [[ $use_current -eq 1 ]]; then
+    diff_patch=$(git_side diff "${diff_args[@]}")
+  else
+    diff_patch=$(git_side diff "${diff_args[@]}")
+  fi
+
+  if [[ $JSON -eq 1 ]]; then
+    local basis_json='{"type":"'"$basis_type"'"}'
+    case "$basis_type" in
+      latest_pair)
+        basis_json=$(printf '{"type":"latest_pair","new":"%s","old":"%s"}' "$basis_new" "$basis_old")
+        ;;
+      since)
+        basis_json=$(printf '{"type":"since","since":%s,"new":"%s","old":"%s"}' "$basis_since" "$basis_new" "$basis_old")
+        ;;
+      current)
+        basis_json=$(printf '{"type":"current","new":"%s","old":"%s"}' "$basis_new" "$basis_old")
+        ;;
+    esac
+    printf '{"status":"ok","code":0,"data":{"basis":%s,"entries":%s,"patch":"%s"}}\n' \
+      "$basis_json" "$entries_json" "$(json_escape "$diff_patch")"
+  else
+    if [[ -n "$diff_patch" ]]; then
+      printf '%s\n' "$diff_patch"
+    else
+      # fall back to stats if no patch
+      if ((${#human_lines[@]})); then
+        printf '%s\n' "${human_lines[@]}"
+      fi
+    fi
+  fi
+}
+
 main() {
   local cmd=""
   local cmd_args=()
@@ -361,6 +509,13 @@ main() {
         cmd_status "${cmd_args[@]}"
       else
         cmd_status
+      fi
+      ;;
+    diff)
+      if ((${#cmd_args[@]})); then
+        cmd_diff "${cmd_args[@]}"
+      else
+        cmd_diff
       fi
       ;;
     log)
