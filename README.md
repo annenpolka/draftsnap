@@ -86,9 +86,9 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
 
 ### Download from GitHub Releases
 
-1. Pick a version (replace `0.1.0` below as needed) and download the single-file binary:
+1. Pick a version (replace `0.1.1` below as needed) and download the single-file binary:
    ```bash
-   ver="0.1.0"
+   ver="0.1.1"
    base="https://github.com/annenpolka/draftsnap/releases/download/v${ver}"
    curl -sSLo /tmp/draftsnap "$base/draftsnap"
    curl -sSLo /tmp/draftsnap.sha256 "$base/draftsnap.sha256"
@@ -129,13 +129,13 @@ Releases are cut from the `main` branch.
    ```
 3. Tag and push:
    ```bash
-   git tag v0.1.0
-   git push origin v0.1.0
+   git tag v0.1.1
+   git push origin v0.1.1
    ```
 4. Publish GitHub Release (preferably automated via `gh`):
    ```bash
-   gh release create v0.1.0 dist/draftsnap dist/draftsnap.sha256 \
-     --title "draftsnap v0.1.0" \
+   gh release create v0.1.1 dist/draftsnap dist/draftsnap.sha256 \
+     --title "draftsnap v0.1.1" \
      --notes "Short notes about the release"
    ```
 5. Clean up local `dist/` if desired (`rm -rf dist`).
