@@ -5,6 +5,7 @@ SCR_DIR=${DRAFTSNAP_SCR_DIR:-scratch}
 GIT_DIR=${DRAFTSNAP_GIT_DIR:-.git-scratch}
 WORK_TREE=${DRAFTSNAP_WORK_TREE:-.}
 JSON=0
+DEFAULT_MSG=""
 
 fail() {
   echo "draftsnap: $*" >&2
@@ -18,6 +19,10 @@ log() {
 
 bool_json() {
   [[ "$1" == "true" ]] && printf 'true' || printf 'false'
+}
+
+git_side() {
+  git --git-dir="$GIT_DIR" --work-tree="$WORK_TREE" "$@"
 }
 
 ensure_exclude_line() {
@@ -95,6 +100,68 @@ cmd_status() {
   fi
 }
 
+cmd_snap() {
+  local path=""
+  local message="$DEFAULT_MSG"
+  local stdin_mode=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -m|--message)
+        shift || fail "missing argument for -m"
+        message="$1"
+        ;;
+      --json)
+        JSON=1
+        ;;
+      -)
+        stdin_mode=true
+        path="$SCR_DIR/stream-$(date +%Y%m%d%H%M%S).md"
+        ;;
+      *)
+        path="$1"
+        ;;
+    esac
+    shift || break
+  done
+
+  [[ -n "$path" ]] || fail "snap requires a target path"
+
+  cmd_ensure >/dev/null
+
+  local abs_path="$WORK_TREE/$path"
+  mkdir -p "$(dirname "$abs_path")"
+
+  if $stdin_mode; then
+    cat >"$abs_path"
+  elif [[ ! -f "$abs_path" ]]; then
+    : >"$abs_path"
+  fi
+
+  git_side add "$path"
+
+  if git_side diff --staged --quiet; then
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"ok","code":10,"data":{"commit":null,"path":"%s","bytes":0}}\n' "$path"
+    fi
+    return 10
+  fi
+
+  local final_message=${message:-"snap: $path"}
+  git_side commit --quiet -m "$final_message"
+  local commit_hash
+  commit_hash=$(git_side rev-parse HEAD)
+  local size
+  size=$(wc -c <"$abs_path")
+  size=${size//[[:space:]]/}
+
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"ok","code":0,"data":{"commit":"%s","path":"%s","bytes":%s}}\n' "$commit_hash" "$path" "$size"
+  else
+    log "snap stored $path at $commit_hash"
+  fi
+}
+
 main() {
   local cmd=""
   local cmd_args=()
@@ -103,6 +170,10 @@ main() {
     case "$1" in
       --json)
         JSON=1
+        ;;
+      -m|--message)
+        shift || fail "missing argument for -m"
+        DEFAULT_MSG="$1"
         ;;
       --)
         shift
@@ -136,6 +207,13 @@ main() {
         cmd_status "${cmd_args[@]}"
       else
         cmd_status
+      fi
+      ;;
+    snap)
+      if ((${#cmd_args[@]})); then
+        cmd_snap "${cmd_args[@]}"
+      else
+        cmd_snap
       fi
       ;;
     "")

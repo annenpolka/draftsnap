@@ -2,6 +2,7 @@
 vendor/bats-core/
 .git-scratch/
 scratch/
+report.tap
 
 # Test harness caches
 /tests/tmp/
