@@ -558,6 +558,149 @@ cmd_restore() {
   fi
 }
 
+cmd_prune() {
+  local keep=""
+  local archive=""
+  local args=()
+
+  while [[ $# -gt 0 ]]; do
+    local token="$1"
+    shift
+    case "$token" in
+      --keep)
+        [[ $# -gt 0 ]] || fail "missing value for --keep"
+        keep="$1"
+        shift
+        ;;
+      --archive)
+        [[ $# -gt 0 ]] || fail "missing directory for --archive"
+        archive="$1"
+        shift
+        ;;
+      --json)
+        JSON=1
+        ;;
+      --)
+        args+=("$@")
+        break
+        ;;
+      *)
+        args+=("$token")
+        ;;
+    esac
+  done
+
+  [[ ${#args[@]} -eq 0 ]] || fail "prune does not accept positional arguments"
+  [[ -n "$keep" ]] || fail "--keep is required"
+  if ! [[ "$keep" =~ ^[0-9]+$ ]]; then
+    fail "--keep must be a non-negative integer"
+  fi
+  if [[ "$keep" -lt 1 ]]; then
+    fail "--keep must be >= 1"
+  fi
+
+  acquire_lock
+  ensure_repo
+
+  if ! git_side rev-parse --verify HEAD >/dev/null 2>&1; then
+    release_lock
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"ok","code":10,"data":{"kept":0,"removed":0,"archive":null,"removed_commits":[]},"warnings":["nothing to prune"]}\n'
+    else
+      log "nothing to prune"
+    fi
+    return 10
+  fi
+
+  local commits=()
+  while IFS= read -r commit_line; do
+    commits+=("$commit_line")
+  done < <(git_side rev-list --reverse HEAD)
+  local total=${#commits[@]}
+  if [[ "$total" -le "$keep" ]]; then
+    release_lock
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"ok","code":10,"data":{"kept":%s,"removed":0,"archive":null,"removed_commits":[]},"warnings":["already within threshold"]}\n' "$total"
+    else
+      log "already within threshold"
+    fi
+    return 10
+  fi
+
+  local remove_count=$((total - keep))
+  local -a removed_commits=()
+  local idx=0
+  while [[ $idx -lt $remove_count ]]; do
+    removed_commits+=("${commits[$idx]}")
+    ((idx++))
+  done
+
+  local archive_dir=""
+  if [[ -n "$archive" ]]; then
+    archive_dir="$WORK_TREE/$archive"
+    mkdir -p "$archive_dir"
+    local counter=0
+    for sha in "${removed_commits[@]}"; do
+      local short=${sha:0:7}
+      local out="$archive_dir/$((counter+1))-$short.tar"
+      git_side archive "$sha" -o "$out"
+      ((counter++))
+    done
+  fi
+
+  local depth=$keep
+  local tmpdir
+  tmpdir=$(mktemp -d)
+  local source_path
+  source_path=$(cd "$GIT_DIR"/.. && pwd)/$(basename "$GIT_DIR")
+  if ! git clone --quiet --depth "$depth" "file://$source_path" "$tmpdir/clone"; then
+    rm -rf "$tmpdir"
+    release_lock
+    fail "failed to clone sidecar for pruning"
+  fi
+
+  local backup_git="$GIT_DIR.prune.bak.$(date +%s)"
+  mv "$GIT_DIR" "$backup_git"
+  mv "$tmpdir/clone/.git" "$GIT_DIR"
+  rm -rf "$tmpdir/clone"
+  rm -rf "$tmpdir"
+  rm -rf "$backup_git"
+
+  ensure_repo
+  git_side reset --hard >/dev/null 2>&1 || true
+  git_side remote remove origin >/dev/null 2>&1 || true
+
+  release_lock
+
+  local removed_json="[]"
+  if ((${#removed_commits[@]})); then
+    local first=1
+    removed_json="["
+    for sha in "${removed_commits[@]}"; do
+      if [[ $first -eq 0 ]]; then
+        removed_json+=",";
+      fi
+      removed_json+="\"$(json_escape "$sha")\""
+      first=0
+    done
+    removed_json+="]"
+  fi
+
+  local archive_json
+  if [[ -n "$archive_dir" ]]; then
+    archive_json="\"$(json_escape "$archive_dir")\""
+  else
+    archive_json="null"
+  fi
+
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"ok","code":0,"data":{"kept":%s,"removed":%s,"archive":%s,"removed_commits":%s}}\n' \
+      "$keep" "$remove_count" "$archive_json" "$removed_json"
+  else
+    log "pruned $remove_count commits (kept $keep)"
+  fi
+}
+
 main() {
   local cmd=""
   local cmd_args=()
@@ -603,6 +746,13 @@ main() {
         cmd_status "${cmd_args[@]}"
       else
         cmd_status
+      fi
+      ;;
+    prune)
+      if ((${#cmd_args[@]})); then
+        cmd_prune "${cmd_args[@]}"
+      else
+        cmd_prune
       fi
       ;;
     diff)

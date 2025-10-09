@@ -27,7 +27,7 @@ create_snapshot() {
 
   mkdir -p scratch
   create_snapshot first "alpha"
-  sleep 1
+  sleep 0.1
   create_snapshot second "beta"
 
   run draftsnap diff --json
@@ -50,9 +50,9 @@ PY
   [ "$status" -eq 0 ]
   mkdir -p scratch
   create_snapshot one "aaa"
-  sleep 1
+  sleep 0.1
   create_snapshot two "bbb"
-  sleep 1
+  sleep 0.1
   create_snapshot three "ccc"
 
   run draftsnap diff --json --since 1
@@ -88,7 +88,7 @@ PY
   [ "$status" -eq 0 ]
   mkdir -p scratch
   create_snapshot foo "hello"
-  sleep 1
+  sleep 0.1
   create_snapshot bar "world"
 
   run draftsnap diff
