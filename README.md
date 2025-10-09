@@ -25,7 +25,13 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    rm -rf .git-scratch scratch
    ```
 
-5. Inspect the sidecar repository without touching the main repo:
+5. Check draftsnap's view of the world:
+   ```bash
+   bin/draftsnap status --json
+   ```
+   You'll see initialization status plus exclude guards reflected in the JSON payload.
+
+6. Inspect the sidecar repository without touching the main repo:
    ```bash
    git --git-dir=.git-scratch --work-tree=. status -sb
    ```

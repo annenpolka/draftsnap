@@ -78,3 +78,45 @@ PY
   [[ $(grep -cFx '!notes/drafts/' "$side_exclude") -eq 1 ]]
   [[ $(grep -cFx '!notes/drafts/**' "$side_exclude") -eq 1 ]]
 }
+
+@test "status reports uninitialized repo" {
+  run draftsnap status --json
+  [ "$status" -eq 0 ]
+
+  python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+data = payload["data"]
+assert data["initialized"] is False
+assert data["git_dir"] == ".git-scratch"
+assert data["scr_dir"] == "scratch"
+main = data["exclude"]["main"]
+side = data["exclude"]["sidecar"]
+assert main["git_dir"] is False
+assert main["scr_dir"] is False
+assert side["wildcard"] is False
+assert side["scr_dir"] is False
+assert side["scr_glob"] is False
+PY
+}
+
+@test "status reports initialized repo" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+  run draftsnap status --json
+  [ "$status" -eq 0 ]
+
+  python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+data = payload["data"]
+assert data["initialized"] is True
+main = data["exclude"]["main"]
+side = data["exclude"]["sidecar"]
+assert main["git_dir"] is True
+assert main["scr_dir"] is True
+assert side["wildcard"] is True
+assert side["scr_dir"] is True
+assert side["scr_glob"] is True
+PY
+}

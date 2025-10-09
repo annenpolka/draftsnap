@@ -56,6 +56,45 @@ cmd_ensure() {
   fi
 }
 
+cmd_status() {
+  local initialized=false
+  [[ -d "$GIT_DIR" ]] && initialized=true
+
+  local main_exclude=".git/info/exclude"
+  local main_git=false
+  local main_scr=false
+  if [[ -f "$main_exclude" ]]; then
+    grep -Fxq "$GIT_DIR/" "$main_exclude" && main_git=true
+    grep -Fxq "$SCR_DIR/" "$main_exclude" && main_scr=true
+  fi
+
+  local side_exclude="$GIT_DIR/info/exclude"
+  local side_wild=false
+  local side_scr=false
+  local side_glob=false
+  if [[ -f "$side_exclude" ]]; then
+    grep -Fxq "*" "$side_exclude" && side_wild=true
+    grep -Fxq "!$SCR_DIR/" "$side_exclude" && side_scr=true
+    grep -Fxq "!$SCR_DIR/**" "$side_exclude" && side_glob=true
+  fi
+
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"ok","code":0,"data":'
+    printf '{"initialized":%s,' "$(bool_json "$initialized")"
+    printf '"git_dir":"%s","scr_dir":"%s",' "$GIT_DIR" "$SCR_DIR"
+    printf '"exclude":'
+    printf '{"main":{"git_dir":%s,"scr_dir":%s},' \
+      "$(bool_json "$main_git")" "$(bool_json "$main_scr")"
+    printf '"sidecar":{"wildcard":%s,"scr_dir":%s,"scr_glob":%s}}' \
+      "$(bool_json "$side_wild")" "$(bool_json "$side_scr")" "$(bool_json "$side_glob")"
+    printf '}}\n'
+  else
+    log "initialized: $(bool_json "$initialized")"
+    log "main exclude - git_dir: $(bool_json "$main_git"), scr_dir: $(bool_json "$main_scr")"
+    log "sidecar exclude - wildcard: $(bool_json "$side_wild"), scr_dir: $(bool_json "$side_scr"), scr_glob: $(bool_json "$side_glob")"
+  fi
+}
+
 main() {
   local cmd=""
   local cmd_args=()
@@ -90,6 +129,13 @@ main() {
         cmd_ensure "${cmd_args[@]}"
       else
         cmd_ensure
+      fi
+      ;;
+    status)
+      if ((${#cmd_args[@]})); then
+        cmd_status "${cmd_args[@]}"
+      else
+        cmd_status
       fi
       ;;
     "")
