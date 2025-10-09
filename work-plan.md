@@ -62,7 +62,7 @@
 - [x] `shellcheck`/lintスクリプトを追加し、開発フローに組み込む。
 - [ ] `draftsnap help`コマンドでCLI/JSONヘルプを提供する。
 - [ ] `draftsnap prompt`でエージェント向けプロンプトを導出できるようにする。
-- [ ] CI/自動テスト実行の雛形(ローカルorGitHub Actions)を整備する。
+- [x] CI/自動テスト実行の雛形(ローカルorGitHub Actions)を整備する。
 
 ## 開発体制とワークフロー
 - ブランチ戦略は`main`に対する短命トピックブランチ。各ブランチでTDDサイクルを完走し、PR前に`shellcheck`/`bats`を実行。
