@@ -45,6 +45,69 @@ release_lock() {
   fi
 }
 
+snap_fail_invalid() {
+  local message="$1"
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"error","code":14,"message":"%s"}\n' "$(json_escape "$message")"
+  else
+    echo "draftsnap: $message" >&2
+  fi
+  release_lock
+  exit 14
+}
+
+sanitize_target_path() {
+  local candidate="$1"
+  local resolved="$candidate"
+  local work_root scratch_root
+
+  work_root=$(cd "$WORK_TREE" 2>/dev/null && pwd -P) || return 1
+  scratch_root="${work_root%/}/$SCR_DIR"
+  scratch_root="${scratch_root%/}"
+
+  if [[ "$resolved" == /* ]]; then
+    local trimmed="${resolved%/}"
+    if [[ "$trimmed" == "$scratch_root" ]]; then
+      return 1
+    fi
+    case "$resolved" in
+      "$scratch_root"/*)
+        resolved="$SCR_DIR/${resolved#"$scratch_root"/}"
+        ;;
+      "$scratch_root")
+        return 1
+        ;;
+      *)
+        return 1
+        ;;
+    esac
+  fi
+
+  if [[ "$resolved" == "$SCR_DIR" ]]; then
+    return 1
+  fi
+
+  if [[ "$resolved" != "$SCR_DIR"/* ]]; then
+    return 1
+  fi
+
+  local remainder="${resolved#"$SCR_DIR"/}"
+  if [[ -z "$remainder" ]]; then
+    return 1
+  fi
+
+  if [[ "$remainder" == "../"* || "$remainder" == *"/../"* || "$remainder" == ".." || "$remainder" == *"/.." ]]; then
+    return 1
+  fi
+
+  if [[ "$remainder" == "./"* || "$remainder" == *"/./"* || "$remainder" == "." || "$remainder" == *"/." ]]; then
+    return 1
+  fi
+
+  printf '%s\n' "$resolved"
+  return 0
+}
+
 acquire_lock() {
   if [[ ${LOCK_HELD:-0} -eq 1 ]]; then
     return 0
@@ -205,6 +268,12 @@ cmd_snap() {
       target_path="$SCR_DIR/$path"
     fi
   fi
+
+  local sanitized_path
+  if ! sanitized_path=$(sanitize_target_path "$target_path"); then
+    snap_fail_invalid "path outside scratch directory"
+  fi
+  target_path="$sanitized_path"
 
   local abs_path="$WORK_TREE/$target_path"
   mkdir -p "$(dirname "$abs_path")"

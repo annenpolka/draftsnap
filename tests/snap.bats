@@ -56,6 +56,25 @@ assert payload["status"] == "ok"
 PY
 }
 
+@test "snap rejects paths escaping scratch" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  run draftsnap snap ../escape.md -m "escape" --json
+  [ "$status" -eq 14 ]
+  python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "error"
+assert payload["code"] == 14
+assert "outside scratch" in payload["message"]
+PY
+
+  [[ ! -e "$TEST_ROOT/../escape.md" ]]
+  run git --git-dir=.git-scratch --work-tree=. rev-parse HEAD
+  [ "$status" -ne 0 ]
+}
+
 @test "snap dash captures stdin into stream file" {
   run draftsnap ensure --json
   [ "$status" -eq 0 ]
