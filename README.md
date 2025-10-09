@@ -91,8 +91,10 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ver="0.1.0"
    base="https://github.com/annenpolka/draftsnap/releases/download/v${ver}"
    curl -sSLo /tmp/draftsnap "$base/draftsnap"
-   curl -sSL "$base/draftsnap.sha256" | shasum -a 256 --check -
-   install -D -m 0755 /tmp/draftsnap ~/.local/bin/draftsnap
+   curl -sSLo /tmp/draftsnap.sha256 "$base/draftsnap.sha256"
+   (cd /tmp && shasum -a 256 --check draftsnap.sha256)
+   mkdir -p ~/.local/bin
+   install -m 0755 /tmp/draftsnap ~/.local/bin/draftsnap
    ```
 2. Optionally keep older versions side-by-side (e.g., `~/.local/bin/draftsnap-0.3.0`) and flip a symlink for fast rollback.
 
