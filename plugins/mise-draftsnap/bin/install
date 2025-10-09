@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PLUGIN_NAME="$1"
+VERSION="$2"
+INSTALL_PATH="$3"
+
+REPO="annenpolka/draftsnap"
+ASSET_NAME="draftsnap"
+
+if [[ "$VERSION" == "latest" ]]; then
+  DOWNLOAD_URL="https://github.com/${REPO}/releases/latest/download/${ASSET_NAME}"
+else
+  DOWNLOAD_URL="https://github.com/${REPO}/releases/download/v${VERSION}/${ASSET_NAME}"
+fi
+
+TMP_FILE=$(mktemp)
+trap 'rm -f "$TMP_FILE"' EXIT
+
+curl -sSL "$DOWNLOAD_URL" -o "$TMP_FILE"
+chmod +x "$TMP_FILE"
+mkdir -p "$INSTALL_PATH/bin"
+install -m 0755 "$TMP_FILE" "$INSTALL_PATH/bin/${ASSET_NAME}"
+
+printf 'Installed %s %s to %s\n' "$PLUGIN_NAME" "$VERSION" "$INSTALL_PATH"

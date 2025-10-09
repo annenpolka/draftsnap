@@ -82,6 +82,49 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    ```
    `ensure` seeds `.git-scratch/info/exclude` so only `scratch/` contents appear here.
 
+## Installation
+
+### Download from GitHub Releases
+
+1. Pick a version (replace `0.4.0` below as needed) and download the single-file binary:
+   ```bash
+   ver="0.4.0"
+   base="https://github.com/annenpolka/draftsnap/releases/download/v${ver}"
+   curl -sSLo /tmp/draftsnap "$base/draftsnap"
+   curl -sSL "$base/draftsnap.sha256" | shasum -a 256 --check -
+   install -D -m 0755 /tmp/draftsnap ~/.local/bin/draftsnap
+   ```
+2. Optionally keep older versions side-by-side (e.g., `~/.local/bin/draftsnap-0.3.0`) and flip a symlink for fast rollback.
+
+### Use mise without a custom plugin
+
+Add a portable binary source to `.mise.toml`:
+
+```toml
+[tools]
+draftsnap = { source = "https://github.com/annenpolka/draftsnap/releases/download/v0.4.0/draftsnap" }
+```
+
+Then run:
+
+```bash
+mise install
+mise use draftsnap@0.4.0
+```
+
+### Use the bundled mise plugin
+
+This repository ships a lightweight plugin under `plugins/mise-draftsnap`. Install and use it via:
+
+```bash
+git clone https://github.com/annenpolka/draftsnap.git ~/.local/share/mise/plugins/draftsnap
+cp -R ~/.local/share/mise/plugins/draftsnap/plugins/mise-draftsnap/* ~/.local/share/mise/plugins/draftsnap/
+mise install draftsnap@0.4.0   # or @latest
+mise use draftsnap@0.4.0
+```
+
+The plugin simply downloads the corresponding GitHub Release asset and installs it into mise's tool cache.
+
 ## Development Flow
 
 - Follow the Red-Green-Refactor (TDD) loop documented in `AGENTS.md` / `work-plan.md`.
