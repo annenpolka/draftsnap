@@ -28,4 +28,27 @@ teardown() {
 
   grep -Fxq '.git-scratch/' .git/info/exclude
   grep -Fxq 'scratch/' .git/info/exclude
+
+  local side_exclude="$TEST_ROOT/.git-scratch/info/exclude"
+  [[ -f "$side_exclude" ]]
+  [[ $(grep -cFx '*' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!scratch/' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!scratch/**' "$side_exclude") -eq 1 ]]
+}
+
+@test "ensure runs idempotently without duplicating exclude rules" {
+  run env DRAFTSNAP_SCR_DIR=scratch DRAFTSNAP_GIT_DIR=.git-scratch draftsnap ensure --json
+  [ "$status" -eq 0 ]
+  run env DRAFTSNAP_SCR_DIR=scratch DRAFTSNAP_GIT_DIR=.git-scratch draftsnap ensure --json
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'"initialized":false'* ]]
+
+  local side_exclude="$TEST_ROOT/.git-scratch/info/exclude"
+  [[ $(grep -cFx '*' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!scratch/' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!scratch/**' "$side_exclude") -eq 1 ]]
+
+  local main_exclude=".git/info/exclude"
+  [[ $(grep -cFx '.git-scratch/' "$main_exclude") -eq 1 ]]
+  [[ $(grep -cFx 'scratch/' "$main_exclude") -eq 1 ]]
 }

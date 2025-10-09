@@ -25,6 +25,12 @@ Temporary Markdown snapshots backed by a sidecar Git repo.
    rm -rf .git-scratch scratch
    ```
 
+5. Inspect the sidecar repository without touching the main repo:
+   ```bash
+   git --git-dir=.git-scratch --work-tree=. status -sb
+   ```
+   `ensure` seeds `.git-scratch/info/exclude` so only `scratch/` contents appear here.
+
 ## Development Flow
 
 - Follow the Red-Green-Refactor (TDD) loop documented in `AGENTS.md` / `work-plan.md`.

@@ -42,6 +42,13 @@ cmd_ensure() {
   ensure_exclude_line "$SCR_DIR/" "$exclude_file"
   ensure_exclude_line "$GIT_DIR/" "$exclude_file"
 
+  local side_exclude="$GIT_DIR/info/exclude"
+  mkdir -p "$(dirname "$side_exclude")"
+  touch "$side_exclude"
+  ensure_exclude_line "*" "$side_exclude"
+  ensure_exclude_line "!$SCR_DIR/" "$side_exclude"
+  ensure_exclude_line "!$SCR_DIR/**" "$side_exclude"
+
   if [[ $JSON -eq 1 ]]; then
     printf '{"status":"ok","code":0,"data":{"initialized":%s,"git_dir":"%s","scr_dir":"%s"}}\n' "$(bool_json "$initialized")" "$GIT_DIR" "$SCR_DIR"
   else

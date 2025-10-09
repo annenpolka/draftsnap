@@ -46,6 +46,7 @@
 - [ ] `ensure --json`が `{status, code, data}` を含む安定したスキーマを返す。
 - [ ] `ensure`が`.git/info/exclude`を冪等に更新し、重複行を出力しない。
 - [ ] `.git/info/exclude`に`scratch/`と`.git-scratch/`が重複なく追記される。
+- [ ] サイドカー側の追跡対象を明示するため、`.git-scratch/info/exclude`に`*`→`!<scr_dir>/`パターンを適用し、`status`がノイズレスであることを保証する。
 - [ ] `status`が初期化済み/未済/ロック中を正しく判定する。
 - [ ] `snap`が新規コンテンツでコミットを作成し、戻り値`0`とコミットIDを返す。
 - [ ] `snap`が内容変更無しで`code=10`を返し、履歴を汚さない。
