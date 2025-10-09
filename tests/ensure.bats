@@ -34,6 +34,13 @@ teardown() {
   [[ $(grep -cFx '*' "$side_exclude") -eq 1 ]]
   [[ $(grep -cFx '!scratch/' "$side_exclude") -eq 1 ]]
   [[ $(grep -cFx '!scratch/**' "$side_exclude") -eq 1 ]]
+
+python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert payload["data"].get("files") == []
+assert payload["data"].get("files_count") == 0
+PY
 }
 
 @test "ensure runs idempotently without duplicating exclude rules" {
@@ -51,6 +58,13 @@ teardown() {
   local main_exclude=".git/info/exclude"
   [[ $(grep -cFx '.git-scratch/' "$main_exclude") -eq 1 ]]
   [[ $(grep -cFx 'scratch/' "$main_exclude") -eq 1 ]]
+
+python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert isinstance(payload["data"].get("files"), list)
+assert payload["data"].get("files_count") == 0
+PY
 }
 
 @test "ensure respects environment overrides" {
@@ -61,7 +75,7 @@ teardown() {
   [[ -d "$TEST_ROOT/notes/drafts" ]]
 
 # shellcheck disable=SC2016
-  python3 - "$output" <<'PY'
+python3 - "$output" <<'PY'
 import json, sys
 payload = json.loads(sys.argv[1])
 assert payload["status"] == "ok"
@@ -77,6 +91,13 @@ PY
   [[ $(grep -cFx '*' "$side_exclude") -eq 1 ]]
   [[ $(grep -cFx '!notes/drafts/' "$side_exclude") -eq 1 ]]
   [[ $(grep -cFx '!notes/drafts/**' "$side_exclude") -eq 1 ]]
+
+python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert payload["data"]["files"] == []
+assert payload["data"]["files_count"] == 0
+PY
 }
 
 @test "status reports uninitialized repo" {
@@ -135,4 +156,29 @@ payload = json.loads(sys.argv[1])
 assert payload["data"]["locked"] is True
 PY
   rm -rf .git-scratch/.draftsnap.lock
+}
+
+@test "ensure lists existing tracked files" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  mkdir -p scratch
+  echo "note" > scratch/note.md
+  run draftsnap snap scratch/note.md -m "note" --json
+  [ "$status" -eq 0 ]
+
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+files = payload["data"]["files"]
+assert isinstance(files, list)
+assert "scratch/note.md" in files, files
+assert payload["data"]["files_count"] == len(files) == 1
+PY
+
+  run draftsnap ensure
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"existing files (1)"* ]]
 }

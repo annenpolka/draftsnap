@@ -132,6 +132,21 @@ ensure_exclude_line() {
   printf '%s\n' "$line" >>"$file"
 }
 
+list_existing_files() {
+  local base="$WORK_TREE/$SCR_DIR"
+  if [[ ! -d "$base" ]]; then
+    return 0
+  fi
+
+  (
+    cd "$base" 2>/dev/null || exit 0
+    find . -type f -print | sed 's|^\./||' | LC_ALL=C sort
+  ) | while IFS= read -r rel_path; do
+    [[ -z "$rel_path" ]] && continue
+    printf '%s/%s\n' "$SCR_DIR" "$rel_path"
+  done
+}
+
 ensure_repo() {
   local initialized=false
 
@@ -162,10 +177,42 @@ cmd_ensure() {
   acquire_lock
   ensure_repo
   local initialized=$ENSURE_INITIALIZED
-  if [[ $JSON -eq 1 ]]; then
-    printf '{"status":"ok","code":0,"data":{"initialized":%s,"git_dir":"%s","scr_dir":"%s"}}\n' "$(bool_json "$initialized")" "$GIT_DIR" "$SCR_DIR"
+  local -a existing_files=()
+  while IFS= read -r file_path; do
+    existing_files+=("$file_path")
+  done < <(list_existing_files)
+
+  local files_count=${#existing_files[@]}
+  local files_json
+  if ((files_count > 0)); then
+    files_json='['
+    local idx=0
+    local path
+    for path in "${existing_files[@]}"; do
+      if ((idx > 0)); then
+        files_json+=','
+      fi
+      files_json+="\"$(json_escape "$path")\""
+      idx=$((idx + 1))
+    done
+    files_json+=']'
   else
-    log "ensure completed"
+    files_json='[]'
+  fi
+
+  if [[ $JSON -eq 1 ]]; then
+    printf '{"status":"ok","code":0,"data":{"initialized":%s,"git_dir":"%s","scr_dir":"%s","files":%s,"files_count":%s}}\n' \
+      "$(bool_json "$initialized")" "$GIT_DIR" "$SCR_DIR" "$files_json" "$files_count"
+  else
+    log "ensure completed (existing files: $files_count)"
+    if ((files_count > 0)); then
+      log "existing files ($files_count):"
+      for path in "${existing_files[@]}"; do
+        log "  $path"
+      done
+    else
+      log "existing files: (none)"
+    fi
   fi
   release_lock
 }
