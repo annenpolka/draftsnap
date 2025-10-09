@@ -52,3 +52,29 @@ teardown() {
   [[ $(grep -cFx '.git-scratch/' "$main_exclude") -eq 1 ]]
   [[ $(grep -cFx 'scratch/' "$main_exclude") -eq 1 ]]
 }
+
+@test "ensure respects environment overrides" {
+  run env DRAFTSNAP_SCR_DIR="notes/drafts" DRAFTSNAP_GIT_DIR=".git-drafts" draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  [[ -d "$TEST_ROOT/.git-drafts" ]]
+  [[ -d "$TEST_ROOT/notes/drafts" ]]
+
+# shellcheck disable=SC2016
+  python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "ok"
+assert payload["code"] == 0
+assert payload["data"]["git_dir"] == ".git-drafts"
+assert payload["data"]["scr_dir"] == "notes/drafts"
+PY
+
+  grep -Fxq '.git-drafts/' .git/info/exclude
+  grep -Fxq 'notes/drafts/' .git/info/exclude
+
+  local side_exclude="$TEST_ROOT/.git-drafts/info/exclude"
+  [[ $(grep -cFx '*' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!notes/drafts/' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!notes/drafts/**' "$side_exclude") -eq 1 ]]
+}
