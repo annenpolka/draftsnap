@@ -559,8 +559,33 @@ cmd_restore() {
 }
 
 cmd_help() {
+  local format="txt"
+  local args=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --format)
+        shift || fail "missing value for --format"
+        format="$1"
+        ;;
+      --format=*)
+        format="${1#--format=}"
+        ;;
+      --json)
+        JSON=1
+        format="json"
+        ;;
+      *)
+        args+=("$1")
+        ;;
+    esac
+    shift || break
+  done
+
+  [[ ${#args[@]} -eq 0 ]] || fail "help does not accept positional arguments"
+  [[ "$format" =~ ^(txt|text|json)$ ]] || fail "unsupported format: $format"
+
   local usage="Usage: draftsnap <command> [options]"
-  local entries=(
+  local commands=(
     "ensure|Initialize or verify the draftsnap sidecar"
     "status|Report initialization and lock status"
     "snap|Capture a snapshot from a file or stdin"
@@ -571,51 +596,81 @@ cmd_help() {
     "help|Show this summary"
     "prompt|Emit agent guidance"
   )
-  local names=()
-  local descriptions=()
-  local entry
-  for entry in "${entries[@]}"; do
-    IFS='|' read -r name desc <<<"$entry"
-    names+=("$name")
-    descriptions+=("$desc")
-  done
+  local globals=(
+    "--json|Emit JSON on STDOUT"
+    "--dry-run|Describe actions without modifying the sidecar"
+    "--quiet|Suppress most human-oriented logs"
+    "--debug|Emit verbose diagnostic output"
+  )
+  local exits=(
+    "0|Success"
+    "10|Success (no changes)"
+    "11|Not initialized"
+    "12|Locked"
+    "13|Precondition failed"
+    "14|Invalid arguments"
+  )
 
-  if [[ $JSON -eq 1 ]]; then
-    local commands_json="["
-    local first=1
-    local idx=0
-    for name in "${names[@]}"; do
-      if [[ $first -eq 0 ]]; then
-        commands_json+=","
-      fi
-      commands_json+="\"$(json_escape "$name")\""
-      first=0
-      ((idx++))
-    done
-    commands_json+="]"
-
+  if [[ $JSON -eq 1 || "$format" == "json" ]]; then
+    local cmds_json="["
     local desc_json="{"
-    first=1
-    idx=0
-    for name in "${names[@]}"; do
+    local first=1
+    for entry in "${commands[@]}"; do
+      IFS='|' read -r name desc <<<"$entry"
       if [[ $first -eq 0 ]]; then
+        cmds_json+=","
         desc_json+=","
       fi
-      desc_json+="\"$(json_escape "$name")\":\"$(json_escape "${descriptions[$idx]}")\""
+      cmds_json+="\"$(json_escape "$name")\""
+      desc_json+="\"$(json_escape "$name")\":\"$(json_escape "$desc")\""
       first=0
-      ((idx++))
     done
+    cmds_json+="]"
     desc_json+="}"
 
-    printf '{"status":"ok","code":0,"data":{"usage":"%s","commands":%s,"descriptions":%s}}\n' \
-      "$(json_escape "$usage")" "$commands_json" "$desc_json"
+    local globals_json="["
+    first=1
+    for entry in "${globals[@]}"; do
+      IFS='|' read -r flag desc <<<"$entry"
+      if [[ $first -eq 0 ]]; then
+        globals_json+=","
+      fi
+      globals_json+="{\"flag\":\"$(json_escape "$flag")\",\"description\":\"$(json_escape "$desc")\"}"
+      first=0
+    done
+    globals_json+="]"
+
+    local exit_json="{"
+    first=1
+    for entry in "${exits[@]}"; do
+      IFS='|' read -r code desc <<<"$entry"
+      if [[ $first -eq 0 ]]; then
+        exit_json+=","
+      fi
+      exit_json+="\"$code\":\"$(json_escape "$desc")\""
+      first=0
+    done
+    exit_json+="}"
+
+    printf '{"status":"ok","code":0,"data":{"usage":"%s","commands":%s,"descriptions":%s,"global_options":%s,"exit_codes":%s}}\n' \
+      "$(json_escape "$usage")" "$cmds_json" "$desc_json" "$globals_json" "$exit_json"
   else
     printf '%s\n\nCommands:\n' "$usage"
-    local idx=0
-    for name in "${names[@]}"; do
-      printf '  %-8s %s\n' "$name" "${descriptions[$idx]}"
-      ((idx++))
+    for entry in "${commands[@]}"; do
+      IFS='|' read -r name desc <<<"$entry"
+      printf '  %-8s %s\n' "$name" "$desc"
     done
+    printf '\nGlobal options:\n'
+    for entry in "${globals[@]}"; do
+      IFS='|' read -r flag desc <<<"$entry"
+      printf '  %-10s %s\n' "$flag" "$desc"
+    done
+    printf '\nExit codes:\n'
+    for entry in "${exits[@]}"; do
+      IFS='|' read -r code desc <<<"$entry"
+      printf '  %-3s %s\n' "$code" "$desc"
+    done
+    printf '\nSee `draftsnap prompt --json` for agent-oriented guidance.\n'
   fi
 }
 

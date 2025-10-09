@@ -18,8 +18,9 @@ teardown() {
   run draftsnap help
   [ "$status" -eq 0 ]
   [[ "$output" == *"Usage: draftsnap"* ]]
-  [[ "$output" == *"ensure"* ]]
-  [[ "$output" == *"snap"* ]]
+  [[ "$output" == *"Commands"* ]]
+  [[ "$output" == *"Global options"* ]]
+  [[ "$output" == *"Exit codes"* ]]
 }
 
 @test "help --json lists commands" {
@@ -29,8 +30,12 @@ teardown() {
 import json, sys
 payload = json.loads(sys.argv[1])
 assert payload["status"] == "ok"
-commands = payload["data"].get("commands", [])
+data = payload["data"]
+commands = data.get("commands", [])
 assert set(["ensure","snap","log","diff","restore","prune","help","prompt"]).issubset(set(commands))
+assert data.get("global_options")
+exit_codes = data.get("exit_codes", {})
+assert set(exit_codes.keys()) == {"0","10","11","12","13","14"}
 PY
 }
 
