@@ -114,16 +114,15 @@ mise use draftsnap@0.4.0
 
 ### Use the bundled mise plugin
 
-This repository ships a lightweight plugin under `plugins/mise-draftsnap`. Install and use it via:
+An official plugin lives on the `mise-plugin` branch of this repository. Install it directly:
 
 ```bash
-git clone https://github.com/annenpolka/draftsnap.git ~/.local/share/mise/plugins/draftsnap
-cp -R ~/.local/share/mise/plugins/draftsnap/plugins/mise-draftsnap/* ~/.local/share/mise/plugins/draftsnap/
+mise plugin add draftsnap https://github.com/annenpolka/draftsnap.git#mise-plugin
 mise install draftsnap@0.4.0   # or @latest
 mise use draftsnap@0.4.0
 ```
 
-The plugin simply downloads the corresponding GitHub Release asset and installs it into mise's tool cache.
+The plugin downloads the matching GitHub Release binary into mise’s tool cache.
 
 ## Development Flow
 
