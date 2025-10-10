@@ -31,11 +31,11 @@ Run `draftsnap prompt` to learn how to use draftsnap in this repository.
 
 1. Pick a version (replace `0.1.1` below as needed) and download the single-file binary:
    ```bash
-   ver="0.1.1"
+   ver="0.1.3"
    base="https://github.com/annenpolka/draftsnap/releases/download/v${ver}"
    curl -sSLo /tmp/draftsnap "$base/draftsnap"
    curl -sSLo /tmp/draftsnap.sha256 "$base/draftsnap.sha256"
-   (cd /tmp && shasum -a 256 --check draftsnap.sha256)
+   (cd /tmp && sed 's#dist/##' draftsnap.sha256 | shasum -a 256 --check -)
    mkdir -p ~/.local/bin
    install -m 0755 /tmp/draftsnap ~/.local/bin/draftsnap
    ```
