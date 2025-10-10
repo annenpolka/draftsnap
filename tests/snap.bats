@@ -36,6 +36,24 @@ PY
   grep -Fq "init note" scratch.log
 }
 
+@test "snap succeeds without configured git identity" {
+  mkdir -p "$TEST_ROOT/home"
+  run env HOME="$TEST_ROOT/home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  echo "anonymous draft" > scratch/anon.md
+  run env HOME="$TEST_ROOT/home" GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_SYSTEM=/dev/null GIT_CONFIG_GLOBAL=/dev/null draftsnap snap scratch/anon.md -m "anon" --json
+  [ "$status" -eq 0 ]
+
+  run git --git-dir=.git-scratch --work-tree=. config user.name
+  [ "$status" -eq 0 ]
+  [[ "$output" == "Draftsnap Agent" ]]
+
+  run git --git-dir=.git-scratch --work-tree=. config user.email
+  [ "$status" -eq 0 ]
+  [[ "$output" == "agent@draftsnap.local" ]]
+}
+
 @test "snap returns code 10 when no changes" {
   run draftsnap ensure --json
   [ "$status" -eq 0 ]

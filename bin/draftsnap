@@ -158,6 +158,20 @@ configure_exclude_file() {
   return 0
 }
 
+ensure_git_identity() {
+  local name="${DRAFTSNAP_USER_NAME:-Draftsnap Agent}"
+  local email="${DRAFTSNAP_USER_EMAIL:-agent@draftsnap.local}"
+  local existing
+
+  if ! existing=$(git_side config --get user.name 2>/dev/null) || [[ -z "$existing" ]]; then
+    git_side config user.name "$name"
+  fi
+
+  if ! existing=$(git_side config --get user.email 2>/dev/null) || [[ -z "$existing" ]]; then
+    git_side config user.email "$email"
+  fi
+}
+
 list_existing_files() {
   local base="$WORK_TREE/$SCR_DIR"
   if [[ ! -d "$base" ]]; then
@@ -192,6 +206,8 @@ ensure_repo() {
   if ! configure_exclude_file "$side_exclude" "*" "!$SCR_DIR/" "!$SCR_DIR/**"; then
     log "warn: skipped updating $side_exclude (unwritable?)"
   fi
+
+  ensure_git_identity
 
   ENSURE_INITIALIZED=$initialized
 }
@@ -549,7 +565,7 @@ cmd_diff() {
     local token=${args[$i]}
     case "$token" in
       --since)
-        ((i++))
+        ((i+=1))
         if [[ $i -ge ${#args[@]} ]]; then
           fail "--since requires an argument"
         fi
@@ -559,10 +575,10 @@ cmd_diff() {
         use_current=1
         ;;
       --)
-        ((i++))
+        ((i+=1))
         while [[ $i -lt ${#args[@]} ]]; do
           pathspec+=("${args[$i]}")
-          ((i++))
+          ((i+=1))
         done
         break
         ;;
@@ -570,7 +586,7 @@ cmd_diff() {
         pathspec+=("$token")
         ;;
     esac
-    ((i++))
+    ((i+=1))
   done
 
   local diff_args=()
@@ -649,9 +665,9 @@ cmd_diff() {
 
   local diff_patch
   if [[ $use_current -eq 1 ]]; then
-    diff_patch=$(git_side diff "${diff_args[@]}")
+    diff_patch=$(git_side diff "${diff_args[@]}" || true)
   else
-    diff_patch=$(git_side diff "${diff_args[@]}")
+    diff_patch=$(git_side diff "${diff_args[@]}" || true)
   fi
 
   if [[ $JSON -eq 1 ]]; then
@@ -689,7 +705,7 @@ cmd_restore() {
   while [[ $i -lt ${#args[@]} ]]; do
     local token=${args[$i]}
     if [[ "$token" == "--" ]]; then
-      ((i++))
+      ((i+=1))
       continue
     fi
     if [[ -z "$rev" ]]; then
@@ -699,7 +715,7 @@ cmd_restore() {
     else
       fail "unexpected argument: $token"
     fi
-    ((i++))
+    ((i+=1))
   done
 
   [[ -n "$rev" ]] || fail "restore requires a revision"
@@ -975,7 +991,7 @@ cmd_prune() {
   local idx=0
   while [[ $idx -lt $remove_count ]]; do
     removed_commits+=("${commits[$idx]}")
-    ((idx++))
+    ((idx+=1))
   done
 
   local archive_dir=""
@@ -987,7 +1003,7 @@ cmd_prune() {
       local short=${sha:0:7}
       local out="$archive_dir/$((counter+1))-$short.tar"
       git_side archive "$sha" -o "$out"
-      ((counter++))
+      ((counter+=1))
     done
   fi
 
