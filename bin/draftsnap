@@ -132,6 +132,32 @@ ensure_exclude_line() {
   printf '%s\n' "$line" >>"$file"
 }
 
+configure_exclude_file() {
+  local file="$1"
+  shift || true
+  local dir
+  dir=$(dirname "$file")
+  if ! mkdir -p "$dir" 2>/dev/null; then
+    return 1
+  fi
+
+  if [[ -e "$file" ]]; then
+    if [[ ! -w "$file" ]]; then
+      return 1
+    fi
+  else
+    if ! touch "$file" 2>/dev/null; then
+      return 1
+    fi
+  fi
+
+  local line
+  for line in "$@"; do
+    ensure_exclude_line "$line" "$file"
+  done
+  return 0
+}
+
 list_existing_files() {
   local base="$WORK_TREE/$SCR_DIR"
   if [[ ! -d "$base" ]]; then
@@ -158,17 +184,14 @@ ensure_repo() {
   mkdir -p "$SCR_DIR"
 
   local exclude_file=".git/info/exclude"
-  mkdir -p "$(dirname "$exclude_file")"
-  touch "$exclude_file"
-  ensure_exclude_line "$SCR_DIR/" "$exclude_file"
-  ensure_exclude_line "$GIT_DIR/" "$exclude_file"
+  if ! configure_exclude_file "$exclude_file" "$SCR_DIR/" "$GIT_DIR/"; then
+    log "warn: skipped updating $exclude_file (unwritable?)"
+  fi
 
   local side_exclude="$GIT_DIR/info/exclude"
-  mkdir -p "$(dirname "$side_exclude")"
-  touch "$side_exclude"
-  ensure_exclude_line "*" "$side_exclude"
-  ensure_exclude_line "!$SCR_DIR/" "$side_exclude"
-  ensure_exclude_line "!$SCR_DIR/**" "$side_exclude"
+  if ! configure_exclude_file "$side_exclude" "*" "!$SCR_DIR/" "!$SCR_DIR/**"; then
+    log "warn: skipped updating $side_exclude (unwritable?)"
+  fi
 
   ENSURE_INITIALIZED=$initialized
 }

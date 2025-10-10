@@ -67,6 +67,34 @@ assert payload["data"].get("files_count") == 0
 PY
 }
 
+@test "ensure tolerates read-only main git exclude" {
+  mkdir -p .git/info
+  touch .git/info/exclude
+  chmod 444 .git/info/exclude
+
+  run env DRAFTSNAP_SCR_DIR=scratch DRAFTSNAP_GIT_DIR=.git-scratch draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  local main_exclude=".git/info/exclude"
+  [[ -f "$main_exclude" ]]
+  [[ $(grep -cFx '.git-scratch/' "$main_exclude") -eq 0 ]]
+  [[ $(grep -cFx 'scratch/' "$main_exclude") -eq 0 ]]
+
+  local side_exclude="$TEST_ROOT/.git-scratch/info/exclude"
+  [[ -f "$side_exclude" ]]
+  [[ $(grep -cFx '*' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!scratch/' "$side_exclude") -eq 1 ]]
+  [[ $(grep -cFx '!scratch/**' "$side_exclude") -eq 1 ]]
+
+python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "ok"
+assert payload["code"] == 0
+assert payload["data"]["initialized"] is True
+PY
+}
+
 @test "ensure respects environment overrides" {
   run env DRAFTSNAP_SCR_DIR="notes/drafts" DRAFTSNAP_GIT_DIR=".git-drafts" draftsnap ensure --json
   [ "$status" -eq 0 ]
