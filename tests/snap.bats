@@ -129,3 +129,64 @@ PY
   subject=$(git --git-dir=.git-scratch --work-tree=. log -1 --pretty=%s)
   [[ "$subject" == "[space:ideas] outline" ]]
 }
+
+@test "snap all commits pending changes" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  printf "alpha v1" > scratch/alpha.md
+  run draftsnap snap scratch/alpha.md -m "alpha init" --json
+  [ "$status" -eq 0 ]
+
+  printf "beta v1" > scratch/beta.md
+  run draftsnap snap scratch/beta.md -m "beta init" --json
+  [ "$status" -eq 0 ]
+
+  printf "alpha v2" > scratch/alpha.md
+  printf "beta v2" > scratch/beta.md
+
+  run draftsnap snap --all -m "batch update" --json
+  [ "$status" -eq 0 ]
+
+  python3 - "$output" <<'PY'
+import json, os, sys
+payload = json.loads(sys.argv[1])
+data = payload["data"]
+assert payload["status"] == "ok"
+assert payload["code"] == 0
+assert isinstance(data["commit"], str) and len(data["commit"]) == 40
+paths = data["paths"]
+assert paths == sorted(paths)
+assert paths == ["scratch/alpha.md", "scratch/beta.md"]
+assert data["files_count"] == 2
+sizes = [os.path.getsize(path) for path in paths]
+assert data["bytes"] == sum(sizes)
+PY
+
+  subject=$(git --git-dir=.git-scratch --work-tree=. log -1 --pretty=%s)
+  [[ "$subject" == "batch update" ]]
+}
+
+@test "snap all returns code 10 when no pending changes" {
+  run draftsnap ensure --json
+  [ "$status" -eq 0 ]
+
+  printf "gamma v1" > scratch/gamma.md
+  run draftsnap snap scratch/gamma.md -m "gamma init" --json
+  [ "$status" -eq 0 ]
+
+  run draftsnap snap --all -m "no changes" --json
+  [ "$status" -eq 10 ]
+
+  python3 - "$output" <<'PY'
+import json, sys
+payload = json.loads(sys.argv[1])
+data = payload["data"]
+assert payload["status"] == "ok"
+assert payload["code"] == 10
+assert data["commit"] is None
+assert data["paths"] == []
+assert data["files_count"] == 0
+assert data["bytes"] == 0
+PY
+}

@@ -265,9 +265,13 @@ cmd_snap() {
   local message="$DEFAULT_MSG"
   local stdin_mode=false
   local space=""
+  local all_mode=false
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
+      --all)
+        all_mode=true
+        ;;
       -m|--message)
         shift || fail "missing argument for -m"
         message="$1"
@@ -290,10 +294,80 @@ cmd_snap() {
     shift || break
   done
 
-  [[ -n "$path" ]] || fail "snap requires a target path"
+  if $all_mode; then
+    if [[ -n "$path" ]]; then
+      fail "snap --all does not accept a path"
+    fi
+    if $stdin_mode; then
+      fail "snap --all cannot read from stdin"
+    fi
+    if [[ -n "$space" ]]; then
+      fail "snap --all cannot be combined with --space"
+    fi
+  else
+    [[ -n "$path" ]] || fail "snap requires a target path"
+  fi
 
   acquire_lock
   ensure_repo
+
+  if $all_mode; then
+    git_side add -f "$SCR_DIR"
+
+    if git_side diff --staged --quiet; then
+      if [[ $JSON -eq 1 ]]; then
+        printf '{"status":"ok","code":10,"data":{"commit":null,"path":null,"paths":[],"files_count":0,"bytes":0}}\n'
+      else
+        log "no pending changes under $SCR_DIR"
+      fi
+      release_lock
+      return 10
+    fi
+
+    local -a staged_paths=()
+    while IFS= read -r staged_path; do
+      [[ -z "$staged_path" ]] && continue
+      staged_paths+=("$staged_path")
+    done < <(git_side diff --staged --name-only | LC_ALL=C sort)
+
+    local total_bytes=0
+    local staged_path
+    for staged_path in "${staged_paths[@]}"; do
+      local abs="$WORK_TREE/$staged_path"
+      if [[ -f "$abs" ]]; then
+        local size
+        size=$(wc -c <"$abs")
+        size=${size//[[:space:]]/}
+        total_bytes=$((total_bytes + size))
+      fi
+    done
+
+    local files_count=${#staged_paths[@]}
+    local paths_json='['
+    local idx=0
+    for staged_path in "${staged_paths[@]}"; do
+      [[ $idx -gt 0 ]] && paths_json+=','
+      paths_json+='"'
+      paths_json+="$(json_escape "$staged_path")"
+      paths_json+='"'
+      idx=$((idx + 1))
+    done
+    paths_json+=']'
+
+    local base_message=${message:-"snap: all"}
+    git_side commit --quiet -m "$base_message"
+    local commit_hash
+    commit_hash=$(git_side rev-parse HEAD)
+
+    if [[ $JSON -eq 1 ]]; then
+      printf '{"status":"ok","code":0,"data":{"commit":"%s","path":null,"paths":%s,"files_count":%s,"bytes":%s}}\n' \
+        "$commit_hash" "$paths_json" "$files_count" "$total_bytes"
+    else
+      log "snap stored $files_count files at $commit_hash"
+    fi
+    release_lock
+    return 0
+  fi
 
   local target_path
   if [[ "$path" == "-" ]]; then
@@ -335,7 +409,9 @@ cmd_snap() {
 
   if git_side diff --staged --quiet; then
     if [[ $JSON -eq 1 ]]; then
-      printf '{"status":"ok","code":10,"data":{"commit":null,"path":"%s","bytes":0}}\n' "$target_path"
+      printf '{"status":"ok","code":10,"data":{"commit":null,"path":"%s","paths":[],"files_count":0,"bytes":0}}\n' "$target_path"
+    else
+      log "no changes for $target_path"
     fi
     release_lock
     return 10
@@ -354,7 +430,8 @@ cmd_snap() {
   size=${size//[[:space:]]/}
 
   if [[ $JSON -eq 1 ]]; then
-    printf '{"status":"ok","code":0,"data":{"commit":"%s","path":"%s","bytes":%s}}\n' "$commit_hash" "$target_path" "$size"
+    printf '{"status":"ok","code":0,"data":{"commit":"%s","path":"%s","paths":["%s"],"files_count":1,"bytes":%s}}\n' \
+      "$commit_hash" "$target_path" "$(json_escape "$target_path")" "$size"
   else
     log "snap stored $target_path at $commit_hash"
   fi
@@ -792,7 +869,7 @@ cmd_help() {
 }
 
 cmd_prompt() {
-  local instructions=$'You may optionally use a CLI tool named “draftsnap” to manage temporary drafts (e.g., Markdown notes) in a sidecar Git repository. Your role is not fixed to “document manager”; use this tool only when it helps your current task.\n\nBasic rules:\n1) Once per session, run `draftsnap ensure --json`. It idempotently prepares a local sidecar repo, creates the scratch directory, and sets `.git/info/exclude`. Proceed only if it returns JSON with code 0.\n2) When you create or edit a temporary draft under the configured scratch directory (default: `scratch/`), snapshot it with:\n   `draftsnap snap <path> -m "<short reason>" --json`\n   Treat exit code 0 as committed. Treat exit code 10 as “no changes” (still a success).\n3) Parse only STDOUT as JSON (`--json`). Never parse STDERR; it is human-oriented logs.\n4) To review or roll back, you may call:\n   - `draftsnap log --json [-- <path>]` to list history,\n   - `draftsnap diff [REV] --json [-- <path>]` to inspect changes,\n   - `draftsnap restore <REV> -- <path> --json` to restore content into the working tree.\n5) For periodic cleanup, you may run `draftsnap prune --keep 200 --json` (or `--days N`). Use it sparingly.\n6) Do not modify `.gitignore`; drafts are excluded locally via `.git/info/exclude`. The tool never pushes to any remote.\n7) If `draftsnap` is unavailable, continue your task without it; do not block.\n\nMessage convention for `-m`:\nUse a terse “purpose: summary” style, e.g., `purpose: tighten outline`, so commits are searchable.\n\nReturn handling:\n- Success with commit: `{"status":"ok","code":0,...}`\n- Success with no changes: `{"status":"ok","code":10,...}`\n- Precondition or lock errors are non-fatal to your overall task; you may retry later.\n\nExample:\n- Start: `draftsnap ensure --json`\n- After writing `scratch/idea.md`: `draftsnap snap scratch/idea.md -m "purpose: refine intro" --json`\n\nUse the tool when it reduces risk or friction; otherwise proceed normally.'
+  local instructions=$'You may optionally use a CLI tool named “draftsnap” to manage temporary drafts (e.g., Markdown notes) in a sidecar Git repository. Your role is not fixed to “document manager”; use this tool only when it helps your current task.\n\nBasic rules:\n1) Once per session, run `draftsnap ensure --json`. It idempotently prepares a local sidecar repo, creates the scratch directory, and sets `.git/info/exclude`. Proceed only if it returns JSON with code 0.\n2) When you create or edit a temporary draft under the configured scratch directory (default: `scratch/`), snapshot it with:\n   `draftsnap snap <path> -m "<short reason>" --json`\n   `draftsnap snap --all -m "<short reason>" --json` to commit every modified scratch file together.\n   Treat exit code 0 as committed. Treat exit code 10 as “no changes” (still a success).\n3) Parse only STDOUT as JSON (`--json`). Never parse STDERR; it is human-oriented logs.\n4) To review or roll back, you may call:\n   - `draftsnap log --json [-- <path>]` to list history,\n   - `draftsnap diff [REV] --json [-- <path>]` to inspect changes,\n   - `draftsnap restore <REV> -- <path> --json` to restore content into the working tree.\n5) For periodic cleanup, you may run `draftsnap prune --keep 200 --json` (or `--days N`). Use it sparingly.\n6) Do not modify `.gitignore`; drafts are excluded locally via `.git/info/exclude`. The tool never pushes to any remote.\n7) If `draftsnap` is unavailable, continue your task without it; do not block.\n\nMessage convention for `-m`:\nUse a terse “purpose: summary” style, e.g., `purpose: tighten outline`, so commits are searchable.\n\nReturn handling:\n- Success with commit: `{"status":"ok","code":0,...}`\n- Success with no changes: `{"status":"ok","code":10,...}`\n- Precondition or lock errors are non-fatal to your overall task; you may retry later.\n\nExample:\n- Start: `draftsnap ensure --json`\n- After writing `scratch/idea.md`: `draftsnap snap scratch/idea.md -m "purpose: refine intro" --json`\n- After touching multiple files: `draftsnap snap --all -m "purpose: checkpoint" --json`\n\nUse the tool when it reduces risk or friction; otherwise proceed normally.'
 
   if [[ $JSON -eq 1 ]]; then
     printf '{"status":"ok","code":0,"data":{"instructions":"%s"}}\n' "$(json_escape "$instructions")"
