@@ -151,7 +151,7 @@ draftsnap prompt --format=json
 
 Agents should:
 1. Run `draftsnap ensure --json` once per session
-2. Snapshot with `draftsnap snap <path> -m "<reason>" --json` after creating/editing drafts
+2. Snapshot with `draftsnap snap <path> -m "<reason>" --json` after creating/editing drafts (or use `draftsnap snap --all -m "<reason>" --json` to commit every modified scratch file together)
 3. Parse only stdout JSON, treat exit code 10 as "no changes" (success)
 
 ## Commands Reference
@@ -177,6 +177,7 @@ Capture a snapshot from a file or stdin.
 ```bash
 draftsnap snap <path> -m "message" [--space <name>] [--json]
 draftsnap snap - -m "message" [--space <name>] [--json]  # stdin mode
+draftsnap snap --all -m "message" [--json]                # bulk mode
 ```
 
 **Options**:
@@ -184,6 +185,7 @@ draftsnap snap - -m "message" [--space <name>] [--json]  # stdin mode
 - `--space <name>` — Group under `scratch/<name>/` and tag commit with `[space:name]`
 - `<path>` — File path (relative to `scratch/` if not absolute)
 - `-` — Read from stdin, creates `scratch/stream-YYYYMMDDHHMMSS.md`
+- `--all` — Commit every modified file under `scratch/` in one snapshot (incompatible with `--space` or stdin)
 
 **Exit codes**: `0` (committed), `10` (no changes)
 
@@ -192,6 +194,7 @@ draftsnap snap - -m "message" [--space <name>] [--json]  # stdin mode
 draftsnap snap scratch/notes.md -m "purpose: add intro"
 draftsnap snap ideas.md --space drafts -m "purpose: brainstorm"
 echo "quick note" | draftsnap snap - -m "purpose: capture idea"
+draftsnap snap --all -m "purpose: checkpoint"
 ```
 
 ---
