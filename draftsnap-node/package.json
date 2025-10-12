@@ -1,0 +1,50 @@
+{
+  "name": "draftsnap-node",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Node.js rewrite of the draftsnap CLI",
+  "bin": {
+    "draftsnap-node": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build && publint"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "cli",
+    "git",
+    "draftsnap",
+    "scratch"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "cac": "^6.7.14",
+    "diff": "^8.0.2",
+    "nanospinner": "^1.2.2",
+    "picocolors": "^1.1.1",
+    "pretty-bytes": "^7.1.0",
+    "strip-ansi": "^7.1.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.5",
+    "@types/node": "^24.7.2",
+    "publint": "^0.3.14",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
