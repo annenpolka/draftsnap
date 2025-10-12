@@ -11,6 +11,7 @@ export interface GitClientOptions {
 export interface GitExecOptions {
   input?: string
   cwd?: string
+  trim?: boolean
 }
 
 export interface GitExecResult {
@@ -68,13 +69,21 @@ export function createGitClient({ workTree, gitDir }: GitClientOptions): GitClie
         })
 
         return {
-          stdout: stripTrailingNewline(stdout),
-          stderr: stripTrailingNewline(stderr)
+          stdout: (options.trim ?? true) ? stripTrailingNewline(stdout) : stdout,
+          stderr: (options.trim ?? true) ? stripTrailingNewline(stderr) : stderr
         }
       } catch (error) {
         if (error && typeof error === 'object' && 'stdout' in error && 'stderr' in error) {
           const execError = error as NodeJS.ErrnoException & { stdout: string; stderr: string; code: number | null }
-          throw new GitError(args, typeof execError.code === 'number' ? execError.code : null, stripTrailingNewline(execError.stdout ?? ''), stripTrailingNewline(execError.stderr ?? ''))
+          const trim = options.trim ?? true
+          const stdout = execError.stdout ?? ''
+          const stderr = execError.stderr ?? ''
+          throw new GitError(
+            args,
+            typeof execError.code === 'number' ? execError.code : null,
+            trim ? stripTrailingNewline(stdout) : stdout,
+            trim ? stripTrailingNewline(stderr) : stderr
+          )
         }
         throw error
       }
