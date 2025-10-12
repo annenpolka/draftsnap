@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile, appendFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../src/commands/ensure.js'
-import { snapCommand } from '../../src/commands/snap.js'
 import { logCommand } from '../../src/commands/log.js'
-import { createLogger } from '../../src/utils/logger.js'
+import { snapCommand } from '../../src/commands/snap.js'
 import { ExitCode } from '../../src/types/errors.js'
+import { createLogger } from '../../src/utils/logger.js'
 
 describe('log command', () => {
   let workTree: string
@@ -35,11 +35,34 @@ describe('log command', () => {
     const logger = createLogger({ json: true })
     const target = join(workTree, scratchDir, 'doc.md')
     await writeFile(target, 'v1\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/doc.md', message: 'purpose: add doc' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/doc.md',
+      message: 'purpose: add doc',
+    })
     await appendFile(target, 'v2\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/doc.md', message: 'purpose: update doc' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/doc.md',
+      message: 'purpose: update doc',
+    })
 
-    const result = await logCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/doc.md' })
+    const result = await logCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/doc.md',
+    })
 
     expect(result.data.entries.length).toBe(2)
     expect(result.data.entries[0].message).toBe('purpose: update doc')
@@ -49,11 +72,35 @@ describe('log command', () => {
     const logger = createLogger({ json: true })
     const target = join(workTree, scratchDir, 'timeline.md')
     await writeFile(target, 'one\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/timeline.md', message: 'purpose: add timeline' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/timeline.md',
+      message: 'purpose: add timeline',
+    })
     await appendFile(target, 'two\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/timeline.md', message: 'purpose: update timeline' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/timeline.md',
+      message: 'purpose: update timeline',
+    })
 
-    const result = await logCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/timeline.md', timeline: true })
+    const result = await logCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/timeline.md',
+      timeline: true,
+    })
 
     expect(result.data.timeline).toBeDefined()
     expect(result.data.timeline?.entries.length).toBeGreaterThan(0)

@@ -1,9 +1,9 @@
 import { createGitClient } from '../core/git.js'
 import { ensureSidecar } from '../core/repository.js'
 import { ExitCode, InvalidArgsError } from '../types/errors.js'
-import { Logger } from '../utils/logger.js'
-import { computeTimelineBar, TimelineEntry } from '../utils/timeline.js'
+import type { Logger } from '../utils/logger.js'
 import { sanitizeTargetPath } from '../utils/path.js'
+import { computeTimelineBar, type TimelineEntry } from '../utils/timeline.js'
 
 interface LogCommandOptions {
   workTree: string
@@ -65,17 +65,17 @@ function parsePrettyLog(output: string): LogEntry[] {
   return entries
 }
 
-interface NumstatEntry {
-  additions: number
-  deletions: number
-  file: string
-}
-
-function parseNumstat(output: string, targetPath: string): { entries: TimelineEntry[]; summary: { commits: number; totalAdditions: number; totalDeletions: number; net: number } } {
+function parseNumstat(
+  output: string,
+  targetPath: string,
+): {
+  entries: TimelineEntry[]
+  summary: { commits: number; totalAdditions: number; totalDeletions: number; net: number }
+} {
   if (!output.trim()) {
     return {
       entries: [],
-      summary: { commits: 0, totalAdditions: 0, totalDeletions: 0, net: 0 }
+      summary: { commits: 0, totalAdditions: 0, totalDeletions: 0, net: 0 },
     }
   }
 
@@ -97,7 +97,7 @@ function parseNumstat(output: string, targetPath: string): { entries: TimelineEn
         message: '',
         additions: 0,
         deletions: 0,
-        highlights: []
+        highlights: [],
       }
       entries.push(currentCommit)
       continue
@@ -136,10 +136,10 @@ function parseNumstat(output: string, targetPath: string): { entries: TimelineEn
   }
 
   const filtered = entries
-    .filter(entry => entry.additions > 0 || entry.deletions > 0 || entry.message)
-    .map(entry => ({
+    .filter((entry) => entry.additions > 0 || entry.deletions > 0 || entry.message)
+    .map((entry) => ({
       ...entry,
-      highlights: entry.highlights.slice(0, 2)
+      highlights: entry.highlights.slice(0, 2),
     }))
 
   return {
@@ -148,8 +148,8 @@ function parseNumstat(output: string, targetPath: string): { entries: TimelineEn
       commits: filtered.length,
       totalAdditions,
       totalDeletions,
-      net: totalAdditions - totalDeletions
-    }
+      net: totalAdditions - totalDeletions,
+    },
   }
 }
 
@@ -164,7 +164,7 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
     return {
       status: 'ok',
       code: ExitCode.OK,
-      data: { entries: [] }
+      data: { entries: [] },
     }
   }
 
@@ -176,7 +176,13 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
     if (!sanitizedPath) {
       throw new InvalidArgsError('path must be within scratch directory')
     }
-    const args = ['log', '--follow', '--date=iso-strict', `--pretty=commit %H\ndate %ad\nmessage %s`, '--numstat']
+    const args = [
+      'log',
+      '--follow',
+      '--date=iso-strict',
+      `--pretty=commit %H\ndate %ad\nmessage %s`,
+      '--numstat',
+    ]
     if (since && since > 0) {
       args.push(`-${since}`)
     }
@@ -188,12 +194,15 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
         logger.info(`no timeline entries for ${sanitizedPath}`)
       } else {
         logger.info(`timeline for ${sanitizedPath}`)
-        parsed.entries.forEach(entry => {
+        parsed.entries.forEach((entry) => {
           logger.info(`${entry.timestamp} ${entry.message} +${entry.additions}/-${entry.deletions}`)
         })
       }
     }
-    const bars = computeTimelineBar(parsed.entries.length, { scale: 10, maxCommits: Math.max(1, parsed.entries.length) })
+    const bars = computeTimelineBar(parsed.entries.length, {
+      scale: 10,
+      maxCommits: Math.max(1, parsed.entries.length),
+    })
     return {
       status: 'ok',
       code: ExitCode.OK,
@@ -203,9 +212,9 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
           summary: parsed.summary,
           bars,
           entries: parsed.entries,
-          path: sanitizedPath
-        }
-      }
+          path: sanitizedPath,
+        },
+      },
     }
   }
 
@@ -224,7 +233,7 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
     if (entries.length === 0) {
       logger.info('no log entries')
     } else {
-      entries.forEach(entry => {
+      entries.forEach((entry) => {
         logger.info(`${entry.commit.slice(0, 7)} ${entry.timestamp} ${entry.message}`)
       })
     }
@@ -233,6 +242,6 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
   return {
     status: 'ok',
     code: ExitCode.OK,
-    data: { entries }
+    data: { entries },
   }
 }

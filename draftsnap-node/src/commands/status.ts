@@ -1,7 +1,7 @@
 import { stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { ExitCode } from '../types/errors.js'
-import { Logger } from '../utils/logger.js'
+import type { Logger } from '../utils/logger.js'
 
 interface StatusCommandOptions {
   workTree: string
@@ -27,7 +27,12 @@ async function exists(path: string): Promise<boolean> {
     await stat(path)
     return true
   } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as NodeJS.ErrnoException).code === 'ENOENT'
+    ) {
       return false
     }
     throw error
@@ -35,7 +40,7 @@ async function exists(path: string): Promise<boolean> {
 }
 
 export async function statusCommand(options: StatusCommandOptions): Promise<StatusCommandResult> {
-  const { workTree, gitDir, scratchDir, json, logger } = options
+  const { gitDir, scratchDir, json, logger } = options
   const headExists = await exists(join(gitDir, 'HEAD'))
   const lockExists = await exists(join(gitDir, '.draftsnap.lock'))
 
@@ -53,7 +58,7 @@ export async function statusCommand(options: StatusCommandOptions): Promise<Stat
       initialized: headExists,
       locked: lockExists,
       gitDir,
-      scratchDir
-    }
+      scratchDir,
+    },
   }
 }

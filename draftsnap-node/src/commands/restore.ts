@@ -4,7 +4,7 @@ import { createGitClient } from '../core/git.js'
 import { LockManager } from '../core/lock.js'
 import { ensureSidecar } from '../core/repository.js'
 import { ExitCode, InvalidArgsError } from '../types/errors.js'
-import { Logger } from '../utils/logger.js'
+import type { Logger } from '../utils/logger.js'
 import { sanitizeTargetPath } from '../utils/path.js'
 
 interface RestoreCommandOptions {
@@ -28,7 +28,9 @@ interface RestoreCommandResult {
   }
 }
 
-export async function restoreCommand(options: RestoreCommandOptions): Promise<RestoreCommandResult> {
+export async function restoreCommand(
+  options: RestoreCommandOptions,
+): Promise<RestoreCommandResult> {
   const { workTree, gitDir, scratchDir, json, logger, revision, path } = options
 
   const sanitized = sanitizeTargetPath(path, workTree, scratchDir)
@@ -72,8 +74,8 @@ export async function restoreCommand(options: RestoreCommandOptions): Promise<Re
         path: sanitized,
         bytes,
         revision,
-        backup
-      }
+        backup,
+      },
     }
   } finally {
     lock.release()

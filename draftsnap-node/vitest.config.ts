@@ -8,8 +8,8 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json-summary'],
       include: ['src/**/*.ts'],
-      exclude: ['tests/**', 'dist/**']
+      exclude: ['tests/**', 'dist/**'],
     },
-    setupFiles: ['tests/setup/test-env.ts']
-  }
+    setupFiles: ['tests/setup/test-env.ts'],
+  },
 })

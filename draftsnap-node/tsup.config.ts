@@ -10,5 +10,5 @@ export default defineConfig({
   minify: false,
   splitting: false,
   bundle: true,
-  platform: 'node'
+  platform: 'node',
 })

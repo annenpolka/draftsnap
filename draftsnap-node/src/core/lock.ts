@@ -1,6 +1,6 @@
+import { existsSync, rmSync } from 'node:fs'
 import { mkdir } from 'node:fs/promises'
-import { rmSync, existsSync } from 'node:fs'
-import { join, dirname } from 'node:path'
+import { dirname, join } from 'node:path'
 import { LockError } from '../types/errors.js'
 
 export interface AcquireOptions {
@@ -12,7 +12,7 @@ const DEFAULT_TIMEOUT = 5_000
 const DEFAULT_RETRY = 100
 
 function wait(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export class LockManager {
@@ -43,7 +43,12 @@ export class LockManager {
         this.registerCleanup()
         return
       } catch (error) {
-        if (error && typeof error === 'object' && 'code' in error && (error as NodeJS.ErrnoException).code === 'EEXIST') {
+        if (
+          error &&
+          typeof error === 'object' &&
+          'code' in error &&
+          (error as NodeJS.ErrnoException).code === 'EEXIST'
+        ) {
           if (Date.now() >= deadline) {
             throw new LockError()
           }

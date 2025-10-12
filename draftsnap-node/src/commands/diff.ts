@@ -1,7 +1,7 @@
 import { createGitClient } from '../core/git.js'
 import { ensureSidecar } from '../core/repository.js'
-import { ExitCode, InvalidArgsError } from '../types/errors.js'
-import { Logger } from '../utils/logger.js'
+import { ExitCode } from '../types/errors.js'
+import type { Logger } from '../utils/logger.js'
 
 interface DiffCommandOptions {
   workTree: string
@@ -11,7 +11,6 @@ interface DiffCommandOptions {
   logger: Logger
   path?: string
   current?: boolean
-  since?: number
 }
 
 interface DiffCommandResult {
@@ -38,8 +37,8 @@ export async function diffCommand(options: DiffCommandOptions): Promise<DiffComm
       data: {
         patch: '',
         base: null,
-        target: 'HEAD'
-      }
+        target: 'HEAD',
+      },
     }
   }
 
@@ -66,8 +65,8 @@ export async function diffCommand(options: DiffCommandOptions): Promise<DiffComm
         data: {
           patch: '',
           base: null,
-          target: head.stdout
-        }
+          target: head.stdout,
+        },
       }
     }
     base = parent.stdout
@@ -91,7 +90,7 @@ export async function diffCommand(options: DiffCommandOptions): Promise<DiffComm
     data: {
       patch,
       base,
-      target
-    }
+      target,
+    },
   }
 }

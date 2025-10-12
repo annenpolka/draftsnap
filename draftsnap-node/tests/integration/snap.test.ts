@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../src/commands/ensure.js'
 import { snapCommand } from '../../src/commands/snap.js'
-import { createLogger } from '../../src/utils/logger.js'
-import { ExitCode } from '../../src/types/errors.js'
 import { createGitClient } from '../../src/core/git.js'
+import { ExitCode } from '../../src/types/errors.js'
+import { createLogger } from '../../src/utils/logger.js'
 
 describe('snap command', () => {
   let workTree: string
@@ -37,7 +37,7 @@ describe('snap command', () => {
       json: true,
       logger,
       path: 'scratch/note.md',
-      message: 'purpose: add note'
+      message: 'purpose: add note',
     })
 
     expect(result.code).toBe(ExitCode.OK)
@@ -60,7 +60,7 @@ describe('snap command', () => {
       json: true,
       logger,
       path: 'scratch/empty.md',
-      message: 'purpose: seed'
+      message: 'purpose: seed',
     })
 
     const result = await snapCommand({
@@ -70,7 +70,7 @@ describe('snap command', () => {
       json: true,
       logger,
       path: 'scratch/empty.md',
-      message: 'purpose: no-op'
+      message: 'purpose: no-op',
     })
 
     expect(result.code).toBe(ExitCode.NO_CHANGES)
@@ -89,7 +89,7 @@ describe('snap command', () => {
       json: true,
       logger,
       all: true,
-      message: 'purpose: batch'
+      message: 'purpose: batch',
     })
 
     expect(result.code).toBe(ExitCode.OK)

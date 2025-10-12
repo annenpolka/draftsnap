@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../src/commands/ensure.js'
-import { createLogger } from '../../src/utils/logger.js'
 import { ExitCode } from '../../src/types/errors.js'
+import { createLogger } from '../../src/utils/logger.js'
 
 describe('ensure command', () => {
   let workTree: string
@@ -28,7 +28,7 @@ describe('ensure command', () => {
       gitDir,
       scratchDir,
       json: true,
-      logger
+      logger,
     })
 
     expect(result.code).toBe(ExitCode.OK)

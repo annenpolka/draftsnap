@@ -4,7 +4,7 @@ import { createGitClient } from '../core/git.js'
 import { LockManager } from '../core/lock.js'
 import { ensureSidecar } from '../core/repository.js'
 import { ExitCode, InvalidArgsError } from '../types/errors.js'
-import { Logger } from '../utils/logger.js'
+import type { Logger } from '../utils/logger.js'
 import { sanitizeTargetPath } from '../utils/path.js'
 
 interface SnapCommandOptions {
@@ -32,7 +32,11 @@ interface SnapCommandResult {
   }
 }
 
-async function ensureFileExists(targetPath: string, absPath: string, stdinContent?: string): Promise<void> {
+async function ensureFileExists(
+  _targetPath: string,
+  absPath: string,
+  stdinContent?: string,
+): Promise<void> {
   await mkdir(dirname(absPath), { recursive: true })
   if (stdinContent !== undefined) {
     await writeFile(absPath, stdinContent)
@@ -41,7 +45,12 @@ async function ensureFileExists(targetPath: string, absPath: string, stdinConten
   try {
     await stat(absPath)
   } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as NodeJS.ErrnoException).code === 'ENOENT'
+    ) {
       await writeFile(absPath, '')
       return
     }
@@ -65,7 +74,10 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
     if (all) {
       await git.exec(['add', '-f', scratchDir])
       const diff = await git.exec(['diff', '--cached', '--name-only'])
-      stagedPaths = diff.stdout.split('\n').map(line => line.trim()).filter(Boolean)
+      stagedPaths = diff.stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
       if (stagedPaths.length === 0) {
         if (!json) {
           logger.info(`no pending changes under ${scratchDir}`)
@@ -73,7 +85,7 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
         return {
           status: 'ok',
           code: ExitCode.NO_CHANGES,
-          data: { commit: null, path: null, paths: [], files_count: 0, bytes: 0 }
+          data: { commit: null, path: null, paths: [], files_count: 0, bytes: 0 },
         }
       }
     } else {
@@ -89,8 +101,11 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
       await ensureFileExists(sanitized, absTarget, stdinContent)
       await git.exec(['add', '--', sanitized])
       const diff = await git.exec(['diff', '--cached', '--name-only'])
-      stagedPaths = diff.stdout.split('\n').map(line => line.trim()).filter(Boolean)
-      stagedPaths = stagedPaths.filter(entry => entry === sanitized)
+      stagedPaths = diff.stdout
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+      stagedPaths = stagedPaths.filter((entry) => entry === sanitized)
       if (stagedPaths.length === 0) {
         if (!json) {
           logger.info(`no changes for ${sanitized}`)
@@ -98,7 +113,7 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
         return {
           status: 'ok',
           code: ExitCode.NO_CHANGES,
-          data: { commit: null, path: sanitized, paths: [], files_count: 0, bytes: 0 }
+          data: { commit: null, path: sanitized, paths: [], files_count: 0, bytes: 0 },
         }
       }
     }
@@ -129,8 +144,8 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
         path: targetPath,
         paths: stagedPaths,
         files_count: stagedPaths.length,
-        bytes: totalBytes
-      }
+        bytes: totalBytes,
+      },
     }
   } finally {
     lock.release()

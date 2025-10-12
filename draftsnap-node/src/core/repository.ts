@@ -1,6 +1,6 @@
-import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises'
-import { Dirent } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import type { Dirent } from 'node:fs'
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { join, relative } from 'node:path'
 import { createGitClient } from './git.js'
 
 interface EnsureSidecarOptions {
@@ -21,7 +21,12 @@ async function pathExists(path: string): Promise<boolean> {
     await stat(path)
     return true
   } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as NodeJS.ErrnoException).code === 'ENOENT'
+    ) {
       return false
     }
     throw error
@@ -36,7 +41,12 @@ async function listFiles(root: string): Promise<string[]> {
     try {
       entries = await readdir(current, { withFileTypes: true })
     } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
         return
       }
       throw error
@@ -63,7 +73,10 @@ async function ensureExclude(workTree: string, scratchDir: string, gitDir: strin
   await mkdir(excludeDir, { recursive: true })
 
   const gitDirRelative = relative(workTree, gitDir) || gitDir
-  const desired = new Set([`${scratchDir}/`, `${gitDirRelative}${gitDirRelative.endsWith('/') ? '' : '/'}`])
+  const desired = new Set([
+    `${scratchDir}/`,
+    `${gitDirRelative}${gitDirRelative.endsWith('/') ? '' : '/'}`,
+  ])
 
   let current = ''
   if (await pathExists(excludePath)) {
@@ -79,7 +92,7 @@ async function ensureExclude(workTree: string, scratchDir: string, gitDir: strin
     return
   }
 
-  const append = Array.from(desired).join('\n') + '\n'
+  const append = `${Array.from(desired).join('\n')}\n`
   await writeFile(excludePath, current + append)
 }
 
@@ -98,12 +111,12 @@ export async function ensureSidecar(options: EnsureSidecarOptions): Promise<Ensu
 
   const filesRoot = join(workTree, scratchDir)
   const files = await listFiles(filesRoot)
-  const prefixed = files.map(file => `${scratchDir}/${file}`)
+  const prefixed = files.map((file) => `${scratchDir}/${file}`)
 
   return {
     initialized,
     gitDir,
     scratchDir,
-    files: prefixed
+    files: prefixed,
   }
 }

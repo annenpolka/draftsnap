@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createGitClient, GitError } from '../../../src/core/git.js'
 
 const TMP_PREFIX = 'draftsnap-node-git-' as const
@@ -43,6 +43,8 @@ describe('createGitClient', () => {
     const git = createGitClient({ workTree, gitDir })
     await git.exec(['init', '--quiet'])
 
-    await expect(git.exec(['rev-parse', '--verify', 'nonexistent'])).rejects.toBeInstanceOf(GitError)
+    await expect(git.exec(['rev-parse', '--verify', 'nonexistent'])).rejects.toBeInstanceOf(
+      GitError,
+    )
   })
 })

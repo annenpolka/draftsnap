@@ -38,6 +38,6 @@ export function computeTimelineBar(commits: number, options: TimelineBarOptions)
   const filled = Math.round(ratio * scale)
   return {
     scale,
-    filled: Math.min(scale, Math.max(0, filled))
+    filled: Math.min(scale, Math.max(0, filled)),
   }
 }

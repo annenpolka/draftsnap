@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile, appendFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { diffCommand } from '../../src/commands/diff.js'
 import { ensureCommand } from '../../src/commands/ensure.js'
 import { snapCommand } from '../../src/commands/snap.js'
-import { diffCommand } from '../../src/commands/diff.js'
 import { createLogger } from '../../src/utils/logger.js'
 
 const scratchDir = 'scratch'
@@ -28,11 +28,34 @@ describe('diff command', () => {
     const logger = createLogger({ json: true })
     const target = join(workTree, scratchDir, 'diff.md')
     await writeFile(target, 'one\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/diff.md', message: 'purpose: add diff' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/diff.md',
+      message: 'purpose: add diff',
+    })
     await appendFile(target, 'two\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/diff.md', message: 'purpose: update diff' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/diff.md',
+      message: 'purpose: update diff',
+    })
 
-    const result = await diffCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/diff.md' })
+    const result = await diffCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/diff.md',
+    })
 
     expect(result.data.patch).toContain('+two')
     expect(result.data.base).not.toBeNull()
@@ -42,10 +65,26 @@ describe('diff command', () => {
     const logger = createLogger({ json: true })
     const target = join(workTree, scratchDir, 'draft.md')
     await writeFile(target, 'alpha\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/draft.md', message: 'purpose: add draft' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/draft.md',
+      message: 'purpose: add draft',
+    })
     await appendFile(target, 'beta\n')
 
-    const result = await diffCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/draft.md', current: true })
+    const result = await diffCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/draft.md',
+      current: true,
+    })
 
     expect(result.data.patch).toContain('+beta')
     expect(result.data.base).toBeNull()

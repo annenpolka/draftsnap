@@ -1,6 +1,6 @@
 import { ensureSidecar } from '../core/repository.js'
 import { ExitCode } from '../types/errors.js'
-import { Logger } from '../utils/logger.js'
+import type { Logger } from '../utils/logger.js'
 
 interface EnsureCommandOptions {
   workTree: string
@@ -43,7 +43,7 @@ export async function ensureCommand(options: EnsureCommandOptions): Promise<Ensu
       initialized: result.initialized,
       gitDir: result.gitDir,
       scratchDir: result.scratchDir,
-      files: result.files
-    }
+      files: result.files,
+    },
   }
 }

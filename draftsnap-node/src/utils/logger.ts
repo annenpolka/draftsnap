@@ -34,13 +34,13 @@ export function createLogger(options: LoggerOptions, sink: Logger = defaultLogge
         return
       }
       base.debug(message)
-    }
+    },
   }
 }
 
 const defaultLogger: Logger = {
-  info: message => console.error(message),
-  warn: message => console.error(message),
-  error: message => console.error(message),
-  debug: message => console.error(`[debug] ${message}`)
+  info: (message) => console.error(message),
+  warn: (message) => console.error(message),
+  error: (message) => console.error(message),
+  debug: (message) => console.error(`[debug] ${message}`),
 }

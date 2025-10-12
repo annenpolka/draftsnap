@@ -64,17 +64,21 @@ export function createGitClient({ workTree, gitDir }: GitClientOptions): GitClie
           env: {
             ...process.env,
             GIT_DIR: gitDir,
-            GIT_WORK_TREE: workTree
-          }
+            GIT_WORK_TREE: workTree,
+          },
         })
 
         return {
           stdout: (options.trim ?? true) ? stripTrailingNewline(stdout) : stdout,
-          stderr: (options.trim ?? true) ? stripTrailingNewline(stderr) : stderr
+          stderr: (options.trim ?? true) ? stripTrailingNewline(stderr) : stderr,
         }
       } catch (error) {
         if (error && typeof error === 'object' && 'stdout' in error && 'stderr' in error) {
-          const execError = error as NodeJS.ErrnoException & { stdout: string; stderr: string; code: number | null }
+          const execError = error as NodeJS.ErrnoException & {
+            stdout: string
+            stderr: string
+            code: number | null
+          }
           const trim = options.trim ?? true
           const stdout = execError.stdout ?? ''
           const stderr = execError.stderr ?? ''
@@ -82,11 +86,11 @@ export function createGitClient({ workTree, gitDir }: GitClientOptions): GitClie
             args,
             typeof execError.code === 'number' ? execError.code : null,
             trim ? stripTrailingNewline(stdout) : stdout,
-            trim ? stripTrailingNewline(stderr) : stderr
+            trim ? stripTrailingNewline(stderr) : stderr,
           )
         }
         throw error
       }
-    }
+    },
   }
 }

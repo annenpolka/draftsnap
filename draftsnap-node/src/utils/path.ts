@@ -4,7 +4,11 @@ function toPosixPath(value: string): string {
   return value.split(sep).join(posix.sep)
 }
 
-export function sanitizeTargetPath(candidate: string, workTree: string, scratchDir: string): string | null {
+export function sanitizeTargetPath(
+  candidate: string,
+  workTree: string,
+  scratchDir: string,
+): string | null {
   const workRoot = resolve(workTree)
   const scratchRoot = resolve(workRoot, scratchDir)
   const targetAbs = isAbsolute(candidate) ? resolve(candidate) : resolve(workRoot, candidate)
@@ -14,7 +18,7 @@ export function sanitizeTargetPath(candidate: string, workTree: string, scratchD
     return null
   }
 
-  if (rel.split(sep).some(segment => segment === '..' || segment === '')) {
+  if (rel.split(sep).some((segment) => segment === '..' || segment === '')) {
     return null
   }
 

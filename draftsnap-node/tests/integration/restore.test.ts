@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile, appendFile, readFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../src/commands/ensure.js'
-import { snapCommand } from '../../src/commands/snap.js'
 import { restoreCommand } from '../../src/commands/restore.js'
-import { createLogger } from '../../src/utils/logger.js'
+import { snapCommand } from '../../src/commands/snap.js'
 import { ExitCode, InvalidArgsError } from '../../src/types/errors.js'
+import { createLogger } from '../../src/utils/logger.js'
 
 describe('restore command', () => {
   let workTree: string
@@ -28,13 +28,41 @@ describe('restore command', () => {
     const logger = createLogger({ json: true })
     const filePath = join(workTree, scratchDir, 'note.md')
     await writeFile(filePath, 'v1\n')
-    const first = await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/note.md', message: 'purpose: v1' })
+    const first = await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/note.md',
+      message: 'purpose: v1',
+    })
     await appendFile(filePath, 'v2\n')
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: 'scratch/note.md', message: 'purpose: v2' })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/note.md',
+      message: 'purpose: v2',
+    })
 
     await writeFile(filePath, 'corrupted\n')
 
-    const result = await restoreCommand({ workTree, gitDir, scratchDir, json: true, logger, revision: first.data.commit!, path: 'scratch/note.md' })
+    if (!first.data.commit) {
+      throw new Error('expected commit hash from initial snapshot')
+    }
+
+    const result = await restoreCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      revision: first.data.commit,
+      path: 'scratch/note.md',
+    })
 
     expect(result.code).toBe(ExitCode.OK)
     expect(result.data.backup).toBeTruthy()
@@ -45,7 +73,15 @@ describe('restore command', () => {
   it('throws when revision is unknown', async () => {
     const logger = createLogger({ json: true })
     await expect(async () => {
-      await restoreCommand({ workTree, gitDir, scratchDir, json: true, logger, revision: 'deadbeef', path: 'scratch/missing.md' })
+      await restoreCommand({
+        workTree,
+        gitDir,
+        scratchDir,
+        json: true,
+        logger,
+        revision: 'deadbeef',
+        path: 'scratch/missing.md',
+      })
     }).rejects.toBeInstanceOf(InvalidArgsError)
   })
 })

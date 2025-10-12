@@ -1,12 +1,12 @@
-import { mkdtemp, rm, rename, symlink, unlink } from 'node:fs/promises'
-import { join } from 'node:path'
-import { tmpdir } from 'node:os'
-import { promisify } from 'node:util'
 import { execFile } from 'node:child_process'
+import { mkdtemp, rename, rm, symlink, unlink } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { createGitClient } from '../core/git.js'
 import { ensureSidecar } from '../core/repository.js'
 import { ExitCode, InvalidArgsError } from '../types/errors.js'
-import { Logger } from '../utils/logger.js'
+import type { Logger } from '../utils/logger.js'
 
 const execFileAsync = promisify(execFile)
 
@@ -40,13 +40,16 @@ export async function pruneCommand(options: PruneCommandOptions): Promise<PruneC
   const git = createGitClient({ workTree, gitDir })
 
   const revList = await git.exec(['rev-list', '--reverse', 'HEAD']).catch(() => ({ stdout: '' }))
-  const commits = revList.stdout.split('\n').map(line => line.trim()).filter(Boolean)
+  const commits = revList.stdout
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
 
   if (commits.length === 0) {
     return {
       status: 'ok',
       code: ExitCode.NO_CHANGES,
-      data: { kept: 0, removed: 0, removedCommits: [] }
+      data: { kept: 0, removed: 0, removedCommits: [] },
     }
   }
 
@@ -57,7 +60,7 @@ export async function pruneCommand(options: PruneCommandOptions): Promise<PruneC
     return {
       status: 'ok',
       code: ExitCode.NO_CHANGES,
-      data: { kept: commits.length, removed: 0, removedCommits: [] }
+      data: { kept: commits.length, removed: 0, removedCommits: [] },
     }
   }
 
@@ -70,10 +73,14 @@ export async function pruneCommand(options: PruneCommandOptions): Promise<PruneC
   try {
     await rm(tempGitLink, { recursive: true, force: true }).catch(() => null)
     await symlink(gitDir, tempGitLink)
-    await execFileAsync('git', ['clone', '--quiet', '--depth', String(keep), '--no-checkout', '.', tmpClone], {
-      cwd: workTree,
-      env: { ...process.env }
-    })
+    await execFileAsync(
+      'git',
+      ['clone', '--quiet', '--depth', String(keep), '--no-checkout', '.', tmpClone],
+      {
+        cwd: workTree,
+        env: { ...process.env },
+      },
+    )
 
     await rm(gitDir, { recursive: true, force: true })
     await rename(join(tmpClone, '.git'), gitDir)
@@ -91,8 +98,8 @@ export async function pruneCommand(options: PruneCommandOptions): Promise<PruneC
       data: {
         kept: keep,
         removed: removeCount,
-        removedCommits
-      }
+        removedCommits,
+      },
     }
   } finally {
     await unlink(tempGitLink).catch(() => {})

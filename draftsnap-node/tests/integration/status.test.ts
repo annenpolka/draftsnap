@@ -1,11 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { mkdtemp, rm } from 'node:fs/promises'
-import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../src/commands/ensure.js'
 import { statusCommand } from '../../src/commands/status.js'
-import { createLogger } from '../../src/utils/logger.js'
 import { LockManager } from '../../src/core/lock.js'
+import { createLogger } from '../../src/utils/logger.js'
 
 describe('status command', () => {
   let workTree: string

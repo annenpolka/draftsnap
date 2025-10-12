@@ -4,7 +4,7 @@ export enum ExitCode {
   NOT_INITIALIZED = 11,
   LOCKED = 12,
   PRECONDITION_FAILED = 13,
-  INVALID_ARGS = 14
+  INVALID_ARGS = 14,
 }
 
 export class DraftsnapError extends Error {

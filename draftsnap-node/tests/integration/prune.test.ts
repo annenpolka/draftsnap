@@ -1,13 +1,13 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { mkdtemp, writeFile, appendFile, rm } from 'node:fs/promises'
-import { join } from 'node:path'
+import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../src/commands/ensure.js'
-import { snapCommand } from '../../src/commands/snap.js'
-import { pruneCommand } from '../../src/commands/prune.js'
 import { logCommand } from '../../src/commands/log.js'
-import { createLogger } from '../../src/utils/logger.js'
+import { pruneCommand } from '../../src/commands/prune.js'
+import { snapCommand } from '../../src/commands/snap.js'
 import { ExitCode } from '../../src/types/errors.js'
+import { createLogger } from '../../src/utils/logger.js'
 
 describe('prune command', () => {
   let workTree: string
@@ -28,7 +28,15 @@ describe('prune command', () => {
   async function snapshot(message: string, file: string) {
     const logger = createLogger({ json: true })
     await writeFile(join(workTree, scratchDir, file), `${message}\n`, { flag: 'a' })
-    await snapCommand({ workTree, gitDir, scratchDir, json: true, logger, path: `scratch/${file}`, message })
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: `scratch/${file}`,
+      message,
+    })
   }
 
   it('keeps only the newest commits when above threshold', async () => {
