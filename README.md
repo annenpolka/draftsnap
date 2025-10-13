@@ -31,20 +31,32 @@ Run `draftsnap prompt` to learn how to use draftsnap in this repository.
 
 The Node implementation is the forward-looking path for draftsnap. It ships the same commands as the Bash binary, adds richer JSON output, and works anywhere Node.js 18+ is available.
 
-Run directly with `pnpm dlx` (no global install required):
+#### Run once without installing
 
 ```bash
-pnpm dlx draftsnap-node@latest draftsnap status --json
+pnpm dlx draftsnap-node@latest status --json
+npx draftsnap-node@latest status --json
 ```
 
-Or install locally:
+#### Install inside a project
+
+Use a dev dependency when you want repeatable access to `draftsnap` within a repository:
 
 ```bash
-pnpm add -D draftsnap-node@latest  # inside a project
-# or
-npm install --global draftsnap-node@latest
+npm install --save-dev draftsnap-node  # or: pnpm add -D draftsnap-node
 
-draftsnap ensure --json
+# later
+npm exec draftsnap ensure --json
+pnpm exec draftsnap snap scratch/notes.md -m "purpose: add intro"
+```
+
+#### Install globally
+
+Prefer a persistent binary on your PATH? Install once and call `draftsnap` anywhere:
+
+```bash
+npm install --global draftsnap-node  # or: pnpm add -g draftsnap-node
+draftsnap status --json
 ```
 
 ### Install the Bash CLI (legacy)
@@ -80,6 +92,8 @@ cp bin/draftsnap ~/.local/bin/draftsnap
 ```
 
 ## Quick Start
+
+> Tip: If you prefer one-off execution, prepend each command with `npx draftsnap-node@latest --` or `pnpm dlx draftsnap-node@latest --`. All examples below assume `draftsnap` is on your PATH (global install) or available via `npm exec`/`pnpm exec`.
 
 1. **Initialize** the sidecar repository in your project:
     ```bash
