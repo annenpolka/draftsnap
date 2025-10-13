@@ -1,3 +1,4 @@
+import type { CAC } from 'cac'
 import cac from 'cac'
 import { diffCommand } from './commands/diff.js'
 import { ensureCommand } from './commands/ensure.js'
@@ -58,10 +59,12 @@ function printJson(data: unknown): void {
 }
 
 async function executeWithHandling(
-  options: Record<string, unknown>,
+  cli: CAC,
+  commandOptions: Record<string, unknown>,
   handler: (ctx: Context) => Promise<void>,
 ): Promise<void> {
-  const ctx = buildContext(options)
+  const globalOptions = cli.parsed?.options ?? {}
+  const ctx = buildContext({ ...globalOptions, ...commandOptions })
 
   try {
     await handler(ctx)
@@ -93,7 +96,7 @@ export async function run(argv: string[]): Promise<void> {
   cli.option('--debug', 'enable debug logs')
 
   cli.command('ensure', 'Initialize or verify the sidecar').action(async (options) => {
-    await executeWithHandling(options, async (ctx) => {
+    await executeWithHandling(cli, options, async (ctx) => {
       const result = await ensureCommand(ctx)
       if (ctx.json) {
         printJson(result)
@@ -108,7 +111,7 @@ export async function run(argv: string[]): Promise<void> {
     .option('--stdin', 'Read content from stdin')
     .option('--space <name>', 'Optional space prefix')
     .action(async (path, options) => {
-      await executeWithHandling(options, async (ctx) => {
+      await executeWithHandling(cli, options, async (ctx) => {
         const stdinRequested = toBoolean(options.stdin)
         const stdinContent = stdinRequested ? await readAllStdin() : undefined
         const result = await snapCommand({
@@ -130,7 +133,7 @@ export async function run(argv: string[]): Promise<void> {
     .option('--timeline', 'Show timeline summary for a document')
     .option('--since <n>', 'Number of commits to include')
     .action(async (path, options) => {
-      await executeWithHandling(options, async (ctx) => {
+      await executeWithHandling(cli, options, async (ctx) => {
         const result = await logCommand({
           ...ctx,
           path,
@@ -147,7 +150,7 @@ export async function run(argv: string[]): Promise<void> {
     .command('diff [path]', 'Compare recent snapshots or the working tree')
     .option('--current', 'Compare against working tree')
     .action(async (path, options) => {
-      await executeWithHandling(options, async (ctx) => {
+      await executeWithHandling(cli, options, async (ctx) => {
         const result = await diffCommand({
           ...ctx,
           path,
@@ -160,7 +163,7 @@ export async function run(argv: string[]): Promise<void> {
     })
 
   cli.command('status', 'Report initialization and lock status').action(async (options) => {
-    await executeWithHandling(options, async (ctx) => {
+    await executeWithHandling(cli, options, async (ctx) => {
       const result = await statusCommand(ctx)
       if (ctx.json) {
         printJson(result)
@@ -171,7 +174,7 @@ export async function run(argv: string[]): Promise<void> {
   cli
     .command('restore <revision> <path>', 'Restore a file from a prior snapshot')
     .action(async (revision, path, options) => {
-      await executeWithHandling(options, async (ctx) => {
+      await executeWithHandling(cli, options, async (ctx) => {
         const result = await restoreCommand({
           ...ctx,
           revision,
@@ -187,7 +190,7 @@ export async function run(argv: string[]): Promise<void> {
     .command('prune', 'Trim old snapshots, keeping the latest N commits')
     .option('--keep <n>', 'Number of commits to keep', { default: '100' })
     .action(async (options) => {
-      await executeWithHandling(options, async (ctx) => {
+      await executeWithHandling(cli, options, async (ctx) => {
         const keep = parseOptionalNumber(options.keep) ?? 100
         const result = await pruneCommand({
           ...ctx,
@@ -201,5 +204,5 @@ export async function run(argv: string[]): Promise<void> {
 
   cli.help()
   cli.version('0.1.0')
-  cli.parse(argv)
+  cli.parse(['', '', ...argv])
 }
