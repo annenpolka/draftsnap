@@ -1158,7 +1158,13 @@ main() {
       fi
       ;;
     "")
-      fail "no command specified"
+      local message="draftsnap: run \`draftsnap --help\` for commands or \`draftsnap prompt\` for agent guidance."
+      if [[ $JSON -eq 1 ]]; then
+        printf '{"status":"ok","code":0,"message":"%s"}\n' "$(json_escape "$message")"
+      else
+        echo "$message"
+      fi
+      exit 0
       ;;
     *)
       fail "unknown command: $cmd"

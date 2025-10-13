@@ -11,6 +11,9 @@ import { DraftsnapError, ExitCode } from './types/errors.js'
 import { createLogger } from './utils/logger.js'
 import { readAllStdin } from './utils/stdin.js'
 
+const DEFAULT_HINT =
+  'draftsnap: run `draftsnap --help` for commands or `draftsnap prompt` for agent guidance.'
+
 interface Context {
   workTree: string
   gitDir: string
@@ -56,6 +59,15 @@ function buildContext(options: Record<string, unknown>): Context {
 
 function printJson(data: unknown): void {
   process.stdout.write(`${JSON.stringify(data)}\n`)
+}
+
+function printDefaultHintJson(json: boolean): void {
+  if (json) {
+    printJson({ status: 'ok', code: ExitCode.OK, message: DEFAULT_HINT })
+  } else {
+    console.log(DEFAULT_HINT)
+  }
+  process.exitCode = ExitCode.OK
 }
 
 async function executeWithHandling(
@@ -206,5 +218,20 @@ export async function run(argv: string[]): Promise<void> {
 
   cli.help()
   cli.version('0.1.0')
-  cli.parse(['', '', ...argv])
+
+  if (argv.length === 0) {
+    printDefaultHintJson(false)
+    return
+  }
+
+  const parsed = cli.parse(['', '', ...argv])
+
+  if (
+    !cli.matchedCommandName &&
+    parsed.args.length === 0 &&
+    !parsed.options.help &&
+    !parsed.options.version
+  ) {
+    printDefaultHintJson(Boolean(parsed.options.json))
+  }
 }
