@@ -96,6 +96,34 @@ async function ensureExclude(workTree: string, scratchDir: string, gitDir: strin
   await writeFile(excludePath, current + append)
 }
 
+async function ensureSidecarExclude(gitDir: string, scratchDir: string): Promise<void> {
+  const excludeDir = join(gitDir, 'info')
+  const excludePath = join(excludeDir, 'exclude')
+  await mkdir(excludeDir, { recursive: true })
+
+  let current = ''
+  const existingLines = new Set<string>()
+  if (await pathExists(excludePath)) {
+    current = await readFile(excludePath, 'utf8')
+    for (const line of current.split('\n')) {
+      if (line.trim()) {
+        existingLines.add(line.trim())
+      }
+    }
+  }
+
+  const desired = ['*', `!${scratchDir}/`, `!${scratchDir}/**`]
+  const missing = desired.filter((entry) => !existingLines.has(entry))
+  if (missing.length === 0) {
+    return
+  }
+
+  const needsNewline = current.length > 0 && !current.endsWith('\n')
+  const suffix = `${missing.join('\n')}\n`
+  const content = needsNewline ? `${current}\n${suffix}` : `${current}${suffix}`
+  await writeFile(excludePath, content)
+}
+
 export async function ensureSidecar(options: EnsureSidecarOptions): Promise<EnsureSidecarResult> {
   const { workTree, gitDir, scratchDir } = options
   const git = createGitClient({ workTree, gitDir })
@@ -108,6 +136,7 @@ export async function ensureSidecar(options: EnsureSidecarOptions): Promise<Ensu
 
   await mkdir(join(workTree, scratchDir), { recursive: true })
   await ensureExclude(workTree, scratchDir, gitDir)
+  await ensureSidecarExclude(gitDir, scratchDir)
 
   const filesRoot = join(workTree, scratchDir)
   const files = await listFiles(filesRoot)

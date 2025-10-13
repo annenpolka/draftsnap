@@ -63,7 +63,7 @@ async function executeWithHandling(
   commandOptions: Record<string, unknown>,
   handler: (ctx: Context) => Promise<void>,
 ): Promise<void> {
-  const globalOptions = cli.parsed?.options ?? {}
+  const globalOptions = cli.options ?? {}
   const ctx = buildContext({ ...globalOptions, ...commandOptions })
 
   try {
@@ -88,7 +88,7 @@ async function executeWithHandling(
 }
 
 export async function run(argv: string[]): Promise<void> {
-  const cli = cac('draftsnap-node')
+  const cli = cac('draftsnap')
   cli.option('--scratch <dir>', 'scratch directory', { default: 'scratch' })
   cli.option('--git-dir <dir>', 'sidecar git directory', { default: '.git-scratch' })
   cli.option('--json', 'output JSON')
@@ -149,12 +149,14 @@ export async function run(argv: string[]): Promise<void> {
   cli
     .command('diff [path]', 'Compare recent snapshots or the working tree')
     .option('--current', 'Compare against working tree')
+    .option('--since <n>', 'Number of commits to include')
     .action(async (path, options) => {
       await executeWithHandling(cli, options, async (ctx) => {
         const result = await diffCommand({
           ...ctx,
           path,
           current: toBoolean(options.current),
+          since: parseOptionalNumber(options.since),
         })
         if (ctx.json) {
           printJson(result)

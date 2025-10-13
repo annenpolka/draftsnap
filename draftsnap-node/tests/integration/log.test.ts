@@ -66,6 +66,7 @@ describe('log command', () => {
 
     expect(result.data.entries.length).toBe(2)
     expect(result.data.entries[0].message).toBe('purpose: update doc')
+    expect(result.data.entries[0].path).toBe('scratch/doc.md')
   })
 
   it('builds timeline summary for a document', async () => {

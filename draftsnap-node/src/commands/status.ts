@@ -1,5 +1,5 @@
-import { stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { readFile, stat } from 'node:fs/promises'
+import { join, relative } from 'node:path'
 import { ExitCode } from '../types/errors.js'
 import type { Logger } from '../utils/logger.js'
 
@@ -19,6 +19,17 @@ interface StatusCommandResult {
     locked: boolean
     gitDir: string
     scratchDir: string
+    exclude: {
+      main: {
+        gitDir: boolean
+        scrDir: boolean
+      }
+      sidecar: {
+        wildcard: boolean
+        scrDir: boolean
+        scrGlob: boolean
+      }
+    }
   }
 }
 
@@ -40,15 +51,55 @@ async function exists(path: string): Promise<boolean> {
 }
 
 export async function statusCommand(options: StatusCommandOptions): Promise<StatusCommandResult> {
-  const { gitDir, scratchDir, json, logger } = options
+  const { workTree, gitDir, scratchDir, json, logger } = options
   const headExists = await exists(join(gitDir, 'HEAD'))
   const lockExists = await exists(join(gitDir, '.draftsnap.lock'))
+
+  async function readExcludeLines(path: string): Promise<Set<string>> {
+    try {
+      const content = await readFile(path, 'utf8')
+      return new Set(
+        content
+          .split('\n')
+          .map((line) => line.trim())
+          .filter(Boolean),
+      )
+    } catch (error) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as NodeJS.ErrnoException).code === 'ENOENT'
+      ) {
+        return new Set()
+      }
+      throw error
+    }
+  }
+
+  const mainExcludePath = join(workTree, '.git', 'info', 'exclude')
+  const mainExclude = await readExcludeLines(mainExcludePath)
+  const gitDirRelative = relative(workTree, gitDir) || gitDir
+  const mainGitDir = mainExclude.has(`${gitDirRelative}${gitDirRelative.endsWith('/') ? '' : '/'}`)
+  const mainScrDir = mainExclude.has(`${scratchDir}/`)
+
+  const sideExcludePath = join(gitDir, 'info', 'exclude')
+  const sideExclude = await readExcludeLines(sideExcludePath)
+  const sideWildcard = sideExclude.has('*')
+  const sideScrDir = sideExclude.has(`!${scratchDir}/`)
+  const sideScrGlob = sideExclude.has(`!${scratchDir}/**`)
 
   if (!json) {
     logger.info(`git dir: ${gitDir}`)
     logger.info(`scratch dir: ${scratchDir}`)
     logger.info(headExists ? 'initialized: yes' : 'initialized: no')
     logger.info(lockExists ? 'locked: yes' : 'locked: no')
+    logger.info(
+      `main exclude - git_dir: ${mainGitDir ? 'true' : 'false'}, scr_dir: ${mainScrDir ? 'true' : 'false'}`,
+    )
+    logger.info(
+      `sidecar exclude - wildcard: ${sideWildcard ? 'true' : 'false'}, scr_dir: ${sideScrDir ? 'true' : 'false'}, scr_glob: ${sideScrGlob ? 'true' : 'false'}`,
+    )
   }
 
   return {
@@ -59,6 +110,17 @@ export async function statusCommand(options: StatusCommandOptions): Promise<Stat
       locked: lockExists,
       gitDir,
       scratchDir,
+      exclude: {
+        main: {
+          gitDir: mainGitDir,
+          scrDir: mainScrDir,
+        },
+        sidecar: {
+          wildcard: sideWildcard,
+          scrDir: sideScrDir,
+          scrGlob: sideScrGlob,
+        },
+      },
     },
   }
 }

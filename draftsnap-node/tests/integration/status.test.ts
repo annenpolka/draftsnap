@@ -29,6 +29,11 @@ describe('status command', () => {
 
     expect(result.data.initialized).toBe(true)
     expect(result.data.locked).toBe(false)
+    expect(result.data.exclude.main.gitDir).toBe(true)
+    expect(result.data.exclude.main.scrDir).toBe(true)
+    expect(result.data.exclude.sidecar.wildcard).toBe(true)
+    expect(result.data.exclude.sidecar.scrDir).toBe(true)
+    expect(result.data.exclude.sidecar.scrGlob).toBe(true)
   })
 
   it('reports lock status when lock directory exists', async () => {
@@ -40,6 +45,7 @@ describe('status command', () => {
 
     const result = await statusCommand({ workTree, gitDir, scratchDir, json: true, logger })
     expect(result.data.locked).toBe(true)
+    expect(result.data.exclude.main.gitDir).toBe(true)
 
     lock.release()
   })

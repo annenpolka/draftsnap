@@ -45,24 +45,40 @@ interface LogCommandResult {
   }
 }
 
-function parsePrettyLog(output: string): LogEntry[] {
+function parsePrettyLog(output: string, fallbackPath?: string): LogEntry[] {
   if (!output.trim()) {
     return []
   }
   const lines = output.split('\n')
   const entries: LogEntry[] = []
   let current: LogEntry | undefined
-  for (const line of lines) {
+  for (const raw of lines) {
+    const line = raw.trimEnd()
     if (!line.trim()) {
+      current = undefined
       continue
     }
-    const [commit, timestamp, message] = line.split('\u001f')
-    if (commit && timestamp) {
-      current = { commit, timestamp, message }
-      entries.push(current)
+    if (line.includes('\u001f')) {
+      const [commit, timestamp, message] = line.split('\u001f')
+      if (commit && timestamp) {
+        current = { commit, timestamp, message }
+        entries.push(current)
+      }
+      continue
+    }
+    if (current && current.path === undefined) {
+      current.path = line
     }
   }
-  return entries
+  if (!fallbackPath) {
+    return entries
+  }
+  return entries.map((entry) => {
+    if (entry.path !== undefined) {
+      return entry
+    }
+    return { ...entry, path: fallbackPath }
+  })
 }
 
 function parseNumstat(
@@ -168,13 +184,18 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
     }
   }
 
-  if (timeline) {
-    if (!path) {
-      throw new InvalidArgsError('timeline mode requires -- <path>')
-    }
-    const sanitizedPath = sanitizeTargetPath(path, workTree, scratchDir)
-    if (!sanitizedPath) {
+  let sanitizedPath: string | undefined
+  if (path) {
+    const candidate = sanitizeTargetPath(path, workTree, scratchDir)
+    if (!candidate) {
       throw new InvalidArgsError('path must be within scratch directory')
+    }
+    sanitizedPath = candidate
+  }
+
+  if (timeline) {
+    if (!sanitizedPath) {
+      throw new InvalidArgsError('timeline mode requires -- <path>')
     }
     const args = [
       'log',
@@ -219,15 +240,15 @@ export async function logCommand(options: LogCommandOptions): Promise<LogCommand
   }
 
   const format = '%H\u001f%ad\u001f%s'
-  const args = ['log', '--date=iso-strict', `--pretty=${format}`]
+  const args = ['log', '--date=iso-strict', `--pretty=${format}`, '--name-only']
   if (since && since > 0) {
     args.push(`-${since}`)
   }
-  if (path) {
-    args.push('--', path)
+  if (sanitizedPath) {
+    args.push('--', sanitizedPath)
   }
   const { stdout } = await git.exec(args)
-  const entries = parsePrettyLog(stdout)
+  const entries = parsePrettyLog(stdout, sanitizedPath)
 
   if (!json) {
     if (entries.length === 0) {

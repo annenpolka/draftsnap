@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../src/commands/ensure.js'
 import { snapCommand } from '../../src/commands/snap.js'
 import { createGitClient } from '../../src/core/git.js'
-import { ExitCode } from '../../src/types/errors.js'
+import { ExitCode, InvalidArgsError } from '../../src/types/errors.js'
 import { createLogger } from '../../src/utils/logger.js'
 
 describe('snap command', () => {
@@ -95,5 +95,41 @@ describe('snap command', () => {
     expect(result.code).toBe(ExitCode.OK)
     expect(result.data.paths.sort()).toEqual(['scratch/a.md', 'scratch/b.md'])
     expect(result.data.files_count).toBe(2)
+  })
+
+  it('captures file paths under a space when provided', async () => {
+    const logger = createLogger({ json: true })
+    const result = await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'notes/today.md',
+      space: 'logs',
+    })
+
+    expect(result.code).toBe(ExitCode.OK)
+    expect(result.data.path).toBe('scratch/logs/notes/today.md')
+
+    const git = createGitClient({ workTree, gitDir })
+    const log = await git.exec(['log', '-1', '--pretty=%s'])
+    expect(log.stdout).toBe('[space:logs] snap: scratch/logs/notes/today.md')
+  })
+
+  it('rejects --all combined with space option', async () => {
+    const logger = createLogger({ json: true })
+
+    await expect(
+      snapCommand({
+        workTree,
+        gitDir,
+        scratchDir,
+        json: true,
+        logger,
+        all: true,
+        space: 'logs',
+      }),
+    ).rejects.toThrowError(InvalidArgsError)
   })
 })

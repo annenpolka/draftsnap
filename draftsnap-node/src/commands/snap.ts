@@ -1,5 +1,5 @@
 import { mkdir, stat, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { dirname, isAbsolute, join, posix } from 'node:path'
 import { createGitClient } from '../core/git.js'
 import { LockManager } from '../core/lock.js'
 import { ensureSidecar } from '../core/repository.js'
@@ -58,8 +58,36 @@ async function ensureFileExists(
   }
 }
 
+function normalizePath(value: string): string {
+  return value.replace(/\\/g, '/')
+}
+
+function resolveTargetPath(path: string, scratchDir: string, space?: string): string {
+  const normalized = normalizePath(path)
+
+  if (isAbsolute(path)) {
+    return path
+  }
+
+  const scratchPrefix = normalizePath(`${scratchDir}/`)
+  if (normalized === scratchDir || normalized.startsWith(scratchPrefix)) {
+    return normalized
+  }
+
+  if (space) {
+    return posix.join(scratchDir, space, normalized)
+  }
+
+  return posix.join(scratchDir, normalized)
+}
+
 export async function snapCommand(options: SnapCommandOptions): Promise<SnapCommandResult> {
-  const { workTree, gitDir, scratchDir, json, logger, message, path, all, stdinContent } = options
+  const { workTree, gitDir, scratchDir, json, logger, message, path, all, stdinContent, space } =
+    options
+
+  if (all && space) {
+    throw new InvalidArgsError('snap --all cannot be combined with --space')
+  }
 
   const lock = new LockManager(gitDir)
   await lock.acquire()
@@ -92,7 +120,8 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
       if (!path) {
         throw new InvalidArgsError('snap requires a target path')
       }
-      const sanitized = sanitizeTargetPath(path, workTree, scratchDir)
+      const candidate = resolveTargetPath(path, scratchDir, space)
+      const sanitized = sanitizeTargetPath(candidate, workTree, scratchDir)
       if (!sanitized) {
         throw new InvalidArgsError('path must be within scratch directory')
       }
@@ -124,8 +153,9 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
       totalBytes += size.size
     }
 
-    const commitMessage = message ?? (all ? 'snap: all' : `snap: ${targetPath}`)
-    await git.exec(['commit', '--quiet', '-m', commitMessage])
+    const baseMessage = message ?? (all ? 'snap: all' : `snap: ${targetPath}`)
+    const finalMessage = !all && space ? `[space:${space}] ${baseMessage}` : baseMessage
+    await git.exec(['commit', '--quiet', '-m', finalMessage])
     const commit = await git.exec(['rev-parse', 'HEAD'])
 
     if (!json) {

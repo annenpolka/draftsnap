@@ -27,7 +27,31 @@ Run `draftsnap prompt` to learn how to use draftsnap in this repository.
 
 ## Installation
 
-### Download from GitHub Releases
+### Use the Node CLI (recommended)
+
+The Node implementation is the forward-looking path for draftsnap. It ships the same commands as the Bash binary, adds richer JSON output, and works anywhere Node.js 18+ is available.
+
+Run directly with `pnpm dlx` (no global install required):
+
+```bash
+pnpm dlx draftsnap-node@latest draftsnap status --json
+```
+
+Or install locally:
+
+```bash
+pnpm add -D draftsnap-node@latest  # inside a project
+# or
+npm install --global draftsnap-node@latest
+
+draftsnap ensure --json
+```
+
+### Install the Bash CLI (legacy)
+
+The original Bash binary remains available for environments without Node.js. It will continue to receive security fixes while we complete the migration.
+
+#### Download from GitHub Releases
 
 1. Pick a version (replace `0.1.1` below as needed) and download the single-file binary:
    ```bash
@@ -45,7 +69,7 @@ Run `draftsnap prompt` to learn how to use draftsnap in this repository.
    export PATH="$HOME/.local/bin:$PATH"
    ```
 
-### Build from Source
+#### Build from Source
 
 ```bash
 git clone https://github.com/annenpolka/draftsnap.git
@@ -58,8 +82,8 @@ cp bin/draftsnap ~/.local/bin/draftsnap
 ## Quick Start
 
 1. **Initialize** the sidecar repository in your project:
-   ```bash
-   draftsnap ensure
+    ```bash
+    draftsnap ensure
    ```
 
 2. **Create and snapshot** a draft:

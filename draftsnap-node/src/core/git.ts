@@ -9,7 +9,6 @@ export interface GitClientOptions {
 }
 
 export interface GitExecOptions {
-  input?: string
   cwd?: string
   trim?: boolean
 }
@@ -60,7 +59,6 @@ export function createGitClient({ workTree, gitDir }: GitClientOptions): GitClie
           encoding: 'utf8',
           maxBuffer: DEFAULT_MAX_BUFFER,
           cwd: options.cwd ?? workTree,
-          input: options.input,
           env: {
             ...process.env,
             GIT_DIR: gitDir,
