@@ -5,6 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Version control for AI design docs. Local. Never pushed.**
+
 Snapshot scratch/ files—plans, notes, explorations.
 
 ---
