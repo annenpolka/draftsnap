@@ -34,6 +34,19 @@ Under the hood it is “just Git,” but configured as a sidecar repo that track
 
 ---
 
+## What Goes in scratch/
+
+Working with AI assistants produces artifacts that feel temporary yet worth keeping around; you will iterate on them, compare versions, or resurrect ideas later. `scratch/` is the sandbox for exactly that “ephemeral-but-valuable” work.
+
+- **Design drafts** – “Explain how authentication should work for our API.”
+- **Exploration notes** – “List three approaches we could take to shrink build times.”
+- **Code experiments** – “Show me a Rust proof-of-concept for this Bash helper.”
+- **Meeting prep** – “Draft an agenda for tomorrow’s incident review.”
+
+These files are not polished deliverables and do not belong in your main Git history, but they are also not disposable. Keeping them in `scratch/` lets draftsnap version them with no ceremony so you can safely explore with AI, rewind at any time, and promote the keepers into your real project when they are ready.
+
+---
+
 ## What This Is (and Isn’t)
 
 **draftsnap is:**
