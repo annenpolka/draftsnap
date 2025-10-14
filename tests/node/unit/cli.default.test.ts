@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { run } from '../../src/cli.js'
+import { run } from '../../../src/cli.js'
 
 const DEFAULT_HINT =
   'draftsnap: run `draftsnap --help` for commands or `draftsnap prompt` for agent guidance.'

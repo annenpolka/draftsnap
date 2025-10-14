@@ -14,9 +14,9 @@
     "build": "tsup",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "lint": "biome check src tests",
-    "lint:fix": "biome check --write src tests",
-    "format": "biome format --write src tests",
+    "lint": "biome check src tests/node",
+    "lint:fix": "biome check --write src tests/node",
+    "format": "biome format --write src tests/node",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build && publint"
   },

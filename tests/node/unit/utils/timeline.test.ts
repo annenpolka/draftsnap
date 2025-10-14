@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { computeTimelineBar } from '../../../src/utils/timeline.js'
+import { computeTimelineBar } from '../../../../src/utils/timeline.js'
 
 describe('computeTimelineBar', () => {
   it('scales commit counts into a fixed-width bar', () => {

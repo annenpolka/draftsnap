@@ -41,7 +41,7 @@ pnpm test
 pnpm run build
 ```
 
-Tests rely on Vitest and create temporary Git repositories under `tests/setup`. The TDD flow should follow the repository-wide `AGENTS.md` guidance (write failing test, make it pass, refactor).
+Tests rely on Vitest and create temporary Git repositories under `tests/node/setup`. The TDD flow should follow the repository-wide `AGENTS.md` guidance (write failing test, make it pass, refactor).
 
 ## Release Checklist
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decideTimelineMode } from '../../../src/commands/timeline.js'
+import { decideTimelineMode } from '../../../../src/commands/timeline.js'
 
 describe('decideTimelineMode', () => {
   it('returns json when json flag is set', () => {
