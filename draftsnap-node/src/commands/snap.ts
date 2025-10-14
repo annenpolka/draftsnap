@@ -128,7 +128,7 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
       targetPath = sanitized
       const absTarget = join(workTree, sanitized)
       await ensureFileExists(sanitized, absTarget, stdinContent)
-      await git.exec(['add', '--', sanitized])
+      await git.exec(['add', '-f', '--', sanitized])
       const diff = await git.exec(['diff', '--cached', '--name-only'])
       stagedPaths = diff.stdout
         .split('\n')

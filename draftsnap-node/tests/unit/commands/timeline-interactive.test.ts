@@ -74,12 +74,15 @@ describe('timelineCommand interactive mode', () => {
       scratchDir,
       json: false,
       raw: false,
-      logger: createLogger({ json: false }, {
-        info: (_message: string) => {},
-        warn: (_message: string) => {},
-        error: (_message: string) => {},
-        debug: (_message: string) => {},
-      }),
+      logger: createLogger(
+        { json: false },
+        {
+          info: (_message: string) => {},
+          warn: (_message: string) => {},
+          error: (_message: string) => {},
+          debug: (_message: string) => {},
+        },
+      ),
       env: {
         stdoutIsTTY: true,
         commandExists: async () => true,
@@ -90,7 +93,9 @@ describe('timelineCommand interactive mode', () => {
 
     expect(result.data.mode).toBe('interactive')
     expect(spawn).toHaveBeenCalledTimes(1)
-    const [command, args, options] = spawn.mock.calls[0]!
+    const firstCall = spawn.mock.calls[0]
+    expect(firstCall).toBeDefined()
+    const [command, args, options] = firstCall as [string, string[], Record<string, unknown>]
     expect(command).toBe('fzf')
     expect(Array.isArray(args)).toBe(true)
     expect(args).toContain('--with-nth=5')
@@ -143,12 +148,15 @@ describe('timelineCommand interactive mode', () => {
       scratchDir,
       json: false,
       raw: false,
-      logger: createLogger({ json: false }, {
-        info: () => {},
-        warn: () => {},
-        error: () => {},
-        debug: () => {},
-      }),
+      logger: createLogger(
+        { json: false },
+        {
+          info: () => {},
+          warn: () => {},
+          error: () => {},
+          debug: () => {},
+        },
+      ),
       env: {
         stdoutIsTTY: true,
         commandExists: async () => true,

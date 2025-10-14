@@ -70,21 +70,13 @@ function parseLog(output: string, fallbackPath?: string): TimelineEntry[] {
   let inPathSection = false
 
   const finalize = () => {
-    if (
-      current &&
-      current.commit &&
-      current.relativeTime &&
-      current.authorDate &&
-      current.message
-    ) {
-      const path = current.path ?? fallbackPath ?? ''
-      entries.push({
-        commit: current.commit,
-        relativeTime: current.relativeTime,
-        authorDate: current.authorDate,
-        message: current.message,
-        path,
-      })
+    const commit = current?.commit
+    const relativeTime = current?.relativeTime
+    const authorDate = current?.authorDate
+    const message = current?.message
+    if (commit && relativeTime && authorDate && message) {
+      const path = current?.path ?? fallbackPath ?? ''
+      entries.push({ commit, relativeTime, authorDate, message, path })
     }
     current = null
     inPathSection = false
@@ -136,7 +128,9 @@ function parseLog(output: string, fallbackPath?: string): TimelineEntry[] {
   return entries
 }
 
-export async function timelineCommand(options: TimelineCommandOptions): Promise<TimelineCommandResult> {
+export async function timelineCommand(
+  options: TimelineCommandOptions,
+): Promise<TimelineCommandResult> {
   const { workTree, gitDir, scratchDir, json, raw, logger, path, env } = options
 
   await ensureSidecar({ workTree, gitDir, scratchDir })
@@ -262,20 +256,21 @@ async function runInteractiveTimeline(params: InteractiveParams): Promise<ExitCo
   const diffPipeline = useDelta ? `${previewBase} | delta` : previewBase
   const diffCommand = `sh -c ${shellQuote(`${diffPipeline} | ${pager}`)}`
   const restoreCommand =
-    "sh -c " +
+    'sh -c ' +
     shellQuote(
       'read -r -p "Restore {3}? [y/N] " ans < /dev/tty && [ "$ans" = y ] && draftsnap restore {1} -- "{3}"',
     )
 
   const modifier = 'ctrl'
-  const modifierLabel = 'Ctrl'
+  const modifierLabel = platform === 'darwin' ? 'Ctrl' : 'Ctrl'
+  const header = `Enter: view diff | ${modifierLabel}-R: restore | Esc: quit`
 
   const args = [
     '--ansi',
     '--no-sort',
     `--delimiter=${delimiter}`,
     '--with-nth=5',
-    `--header=${'Enter: view diff | Ctrl-R: restore | Esc: quit'}`,
+    `--header=${header}`,
     `--preview=${previewCommand}`,
     '--preview-window=right:60%:wrap',
     `--bind=enter:execute(${diffCommand})`,
@@ -292,12 +287,12 @@ async function runInteractiveTimeline(params: InteractiveParams): Promise<ExitCo
   })
   child.stdin.end()
 
-  const exitCode = await new Promise<number>((resolve) => {
+  await new Promise<void>((resolve) => {
     child.on('close', (code) => {
       if (typeof code === 'number') {
-        resolve(code)
+        resolve()
       } else {
-        resolve(0)
+        resolve()
       }
     })
   })

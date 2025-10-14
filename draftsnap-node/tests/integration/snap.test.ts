@@ -117,6 +117,50 @@ describe('snap command', () => {
     expect(log.stdout).toBe('[space:logs] snap: scratch/logs/notes/today.md')
   })
 
+  it('commits all files with --all even when scratch is ignored', async () => {
+    const logger = createLogger({ json: true })
+    await writeFile(join(workTree, '.gitignore'), 'scratch/\n')
+    await writeFile(join(workTree, scratchDir, 'alpha.md'), 'alpha\n')
+    await writeFile(join(workTree, scratchDir, 'beta.md'), 'beta\n')
+
+    const result = await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      all: true,
+      message: 'purpose: batch ignored scratch',
+    })
+
+    expect(result.code).toBe(ExitCode.OK)
+    expect(result.data.paths.sort()).toEqual(['scratch/alpha.md', 'scratch/beta.md'])
+  })
+
+  it('forces add when scratch is ignored in .gitignore', async () => {
+    const logger = createLogger({ json: true })
+    await writeFile(join(workTree, '.gitignore'), 'scratch/\n')
+    const target = join(workTree, scratchDir, 'ignored.md')
+    await writeFile(target, 'valuable notes\n')
+
+    const result = await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/ignored.md',
+      message: 'purpose: keep ignored scratch',
+    })
+
+    expect(result.code).toBe(ExitCode.OK)
+    expect(result.data.path).toBe('scratch/ignored.md')
+
+    const git = createGitClient({ workTree, gitDir })
+    const status = await git.exec(['show', '--stat'])
+    expect(status.stdout).toContain('scratch/ignored.md')
+  })
+
   it('rejects --all combined with space option', async () => {
     const logger = createLogger({ json: true })
 
