@@ -2,7 +2,14 @@
 
 All notable changes will be documented in this file. This project adheres to [SemVer](https://semver.org/spec/v2.0.0.html) while still pre-1.0.
 
+## [0.3.1] - 2025-10-14
+
+### Fixed
+- Allow `snap` to commit files even when `scratch/` is ignored in `.gitignore`.
+- Scoped Biome linting to source and test directories to prevent noise from generated bundles.
+
 ## [0.3.0] - 2025-10-14
+
 
 ### Added
 - Introduced `draftsnap timeline` command with an fzf-powered interactive UI, JSON and plain-text fallbacks, and in-place restore prompts.
@@ -39,6 +46,7 @@ All notable changes will be documented in this file. This project adheres to [Se
 - Missing `path` metadata in log entries when filtering by file.
 - Incomplete exclude configuration when initialising sidecars.
 
+[0.3.1]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.3.1
 [0.3.0]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.3.0
 [0.2.1]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.2.1
 [0.2.0]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.2.0
