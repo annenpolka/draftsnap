@@ -22,7 +22,8 @@ The CLI executable name is `draftsnap`. After installation you can run `draftsna
 
 - `ensure` – initialise or verify the `.git-scratch` sidecar repository
 - `snap` – snapshot a file (`--space`, `--all`, `--stdin` supported)
-- `log` – list snapshots, optionally with `--timeline`
+- `log` – list snapshots with metadata (JSON-friendly)
+- `timeline` – interactive history browser with `--raw` and `--json` fallbacks
 - `diff` – compare recent snapshots (`--since`, `--current`)
 - `status` – show initialisation and lock state, plus exclude configuration
 - `restore` – restore a path from a given revision

@@ -3,6 +3,7 @@ import cac from 'cac'
 import { diffCommand } from './commands/diff.js'
 import { ensureCommand } from './commands/ensure.js'
 import { logCommand } from './commands/log.js'
+import { timelineCommand } from './commands/timeline.js'
 import { pruneCommand } from './commands/prune.js'
 import { restoreCommand } from './commands/restore.js'
 import { snapCommand } from './commands/snap.js'
@@ -154,6 +155,25 @@ export async function run(argv: string[]): Promise<void> {
           since: parseOptionalNumber(options.since),
         })
         if (ctx.json) {
+          printJson(result)
+        }
+      })
+    })
+
+  cli
+    .command('timeline [path]', 'Browse snapshot history interactively')
+    .option('--raw', 'Force plain-text fallback mode')
+    .option('--json', 'Output JSON (also available as global option)')
+    .action(async (path, options) => {
+      await executeWithHandling(cli, options, async (ctx) => {
+        const json = ctx.json || toBoolean(options.json)
+        const result = await timelineCommand({
+          ...ctx,
+          json,
+          path,
+          raw: toBoolean(options.raw),
+        })
+        if (json) {
           printJson(result)
         }
       })

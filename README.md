@@ -14,6 +14,7 @@ When working with AI coding assistants, you often generate temporary Markdown no
 - **Safe by design** — No remote repository, automatic `.git/info/exclude` configuration, never accidentally pushed
 - **JSON-first API** — Every command supports `--json` output with consistent schema for easy automation
 - **Agent-friendly** — Built for coding assistants with clear exit codes, idempotent operations, and `draftsnap prompt` for usage instructions
+- **Visual history browser** — Explore snapshots interactively with `draftsnap timeline`; falls back to plain text when `fzf` is unavailable or output is piped
 - **Streaming support** — Pipe content directly via stdin without creating intermediate files
 - **Space-based organization** — Group related drafts with `--space` for better searchability
 
@@ -116,6 +117,11 @@ cp bin/draftsnap ~/.local/bin/draftsnap
    draftsnap diff
    ```
 
+5. **Browse the timeline** (interactive when `fzf` is present):
+   ```bash
+   draftsnap timeline
+   ```
+
 That's it! Your drafts are now versioned in `.git-scratch/` without touching your main repository.
 
 ## Usage Examples
@@ -161,6 +167,20 @@ draftsnap snap feature.md --space specs -m "outline"
 # Commit message includes [space:specs] for filtering
 draftsnap log --json | grep "space:specs"
 ```
+
+### Interactive Timeline Browser
+
+Launch an interactive view of your snapshots with live diff previews and restore shortcuts. The command automatically falls back to plain text when `fzf` is missing or output is redirected, and `--json` or `--raw` expose timeline data for automation.
+
+```bash
+draftsnap timeline -- scratch/notes.md
+```
+
+- Arrow keys / `j` `k` — move between commits
+- `Enter` — view the diff in your `$PAGER` (uses `delta` when installed)
+- `Ctrl+R` — restore the highlighted revision after confirmation
+- `Esc` — quit (or use `Ctrl-C`)
+- `--raw` — force the non-interactive text stream
 
 ### Reviewing and Restoring
 
@@ -255,6 +275,35 @@ draftsnap log                              # All snapshots
 draftsnap log -- scratch/notes.md          # Specific file
 draftsnap log --json | jq '.data.entries'  # Parse with jq
 ```
+
+---
+
+#### `timeline [-- <path>]`
+Browse snapshot history interactively with diff previews and restore shortcuts. Falls back to plain text automatically when `fzf` is unavailable or output is redirected.
+
+```bash
+draftsnap timeline [--json] [--raw] [-- <path>]
+```
+
+**Options**:
+- `--json` — Emit machine-readable timeline data (non-interactive)
+- `--raw` — Force plain-text output even on a TTY
+- `-- <path>` — Limit history to a specific file or directory under `scratch/`
+
+**Exit codes**: `0` (success), `11` (not initialized when interactive mode is requested before any snapshot exists)
+
+**Examples**:
+```bash
+draftsnap timeline                      # Interactive browser for all snapshots
+draftsnap timeline -- scratch/notes.md  # Filter to one document
+draftsnap timeline --raw | head         # Pipe-friendly plain text
+draftsnap timeline --json | jq '.data.entries[0]'
+```
+
+- **Keybindings (interactive mode)**:
+- `Enter` — view the diff via `$PAGER` (uses `delta` when installed)
+- `Ctrl+R` — restore highlighted revision after confirmation
+- `Esc` — quit (Ctrl-C also works)
 
 ---
 
