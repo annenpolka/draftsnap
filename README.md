@@ -4,541 +4,193 @@
 [![Latest Release](https://img.shields.io/github/v/release/annenpolka/draftsnap)](https://github.com/annenpolka/draftsnap/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Sidecar Git snapshots for temporary drafts—safe, local, never pushed.**
+**Undo for AI pair programming.** Keep experiments in `scratch/`, snapshot automatically, and rewind instantly.
 
-When working with AI coding assistants, you often generate temporary Markdown notes, outlines, and drafts that you want to version but not commit to your main repository. `draftsnap` solves this by maintaining a separate sidecar Git repository (`.git-scratch/`) that tracks only your scratch files under `scratch/`, keeping your main repo clean while giving you full version control over your temporary work.
+---
 
-## Features
+## The Problem
 
-- **Complete isolation** — Uses a separate `.git-scratch/` repository that never interferes with your main repo
-- **Safe by design** — No remote repository, automatic `.git/info/exclude` configuration, never accidentally pushed
-- **JSON-first API** — Every command supports `--json` output with consistent schema for easy automation
-- **Agent-friendly** — Built for coding assistants with clear exit codes, idempotent operations, and `draftsnap prompt` for usage instructions
-- **Visual history browser** — Explore snapshots interactively with `draftsnap timeline`; falls back to plain text when `fzf` is unavailable or output is piped
-- **Streaming support** — Pipe content directly via stdin without creating intermediate files
-- **Space-based organization** — Group related drafts with `--space` for better searchability
+You ask an AI to “make this design more detailed” and it rewrites the entire document. Two prompts later you decide the simpler version was better—but you never saved it. When you say “go back,” the model shrugs; you have no diff, no history, and no way to recover the draft you liked.
 
-## Quick Start with AI Agents
+This happens all the time when pair programming with AI. Git can help, but only if you manually manage branches, exclusions, and commit messages. That overhead kills flow.
 
-**For users**: Copy and paste this into your AI assistant:
+---
 
-```
-Run `draftsnap prompt` to learn how to use draftsnap in this repository.
-```
+## The Solution
 
-## Installation
+`draftsnap` gives you automatic version control for temporary AI work:
 
-### Use the Node CLI (recommended)
+- Snapshot scratch files with one command (or let your assistant do it)
+- Browse history visually with `draftsnap timeline`
+- Restore any prior snapshot in seconds
+- Keep experiments out of your real Git history
 
-The Node implementation is the forward-looking path for draftsnap. It ships the same commands as the Bash binary, adds richer JSON output, and works anywhere Node.js 18+ is available.
+Under the hood it is “just Git,” but configured as a sidecar repo that tracks only `scratch/`. There is no ceremony, no risk of pushing drafts, and no need to remember exclusions.
 
-#### Run once without installing
+---
 
-```bash
-pnpm dlx draftsnap-node@latest status --json
-npx draftsnap-node@latest status --json
-```
+## What This Is (and Isn’t)
 
-#### Install inside a project
+**draftsnap is:**
+- A safety net for AI-generated drafts and experiments
+- Git with training wheels—sidecar history, JSON output, idempotent commands
+- Five simple CLI commands you can hand to an assistant
 
-Use a dev dependency when you want repeatable access to `draftsnap` within a repository:
+**draftsnap is not:**
+- A replacement for Git in your main repository
+- Magic (you could replicate it with `.git/info/exclude` + discipline)
+- Complex—you can learn it in a coffee break
 
-```bash
-npm install --save-dev draftsnap-node  # or: pnpm add -D draftsnap-node
+If you have ever said “wait, show me the previous version” to an AI and had nothing to revert to, draftsnap is useful.
 
-# later
-npm exec draftsnap ensure --json
-pnpm exec draftsnap snap scratch/notes.md -m "purpose: add intro"
-```
+---
 
-#### Install globally
+## How It Works
 
-Prefer a persistent binary on your PATH? Install once and call `draftsnap` anywhere:
+- A second Git repository lives at `.git-scratch/`
+- Only files beneath `scratch/` are tracked
+- Commands expose consistent JSON and clear exit codes for automation
+- Scratch history never touches origin, so you can’t accidentally push it
 
-```bash
-npm install --global draftsnap-node  # or: pnpm add -g draftsnap-node
-draftsnap status --json
-```
+Want to promote a draft to your real project? Move it out of `scratch/` and commit as usual.
 
-### Install the Bash CLI (legacy)
-
-The original Bash binary remains available for environments without Node.js. It will continue to receive security fixes while we complete the migration.
-
-#### Download from GitHub Releases
-
-1. Pick a version (replace `0.1.1` below as needed) and download the single-file binary:
-   ```bash
-   ver="0.1.3"
-   base="https://github.com/annenpolka/draftsnap/releases/download/v${ver}"
-   curl -sSLo /tmp/draftsnap "$base/draftsnap"
-   curl -sSLo /tmp/draftsnap.sha256 "$base/draftsnap.sha256"
-   (cd /tmp && sed 's#dist/##' draftsnap.sha256 | shasum -a 256 --check -)
-   mkdir -p ~/.local/bin
-   install -m 0755 /tmp/draftsnap ~/.local/bin/draftsnap
-   ```
-
-2. Ensure `~/.local/bin` is in your PATH:
-   ```bash
-   export PATH="$HOME/.local/bin:$PATH"
-   ```
-
-#### Build from Source
-
-```bash
-git clone https://github.com/annenpolka/draftsnap.git
-cd draftsnap
-./scripts/bootstrap-bats.sh  # Install test runner
-./vendor/bats-core/bin/bats tests  # Verify installation
-cp bin/draftsnap ~/.local/bin/draftsnap
-```
+---
 
 ## Quick Start
 
-> Tip: If you prefer one-off execution, prepend each command with `npx draftsnap-node@latest --` or `pnpm dlx draftsnap-node@latest --`. All examples below assume `draftsnap` is on your PATH (global install) or available via `npm exec`/`pnpm exec`.
-
-1. **Initialize** the sidecar repository in your project:
-    ```bash
-    draftsnap ensure
-   ```
-
-2. **Create and snapshot** a draft:
-   ```bash
-   echo "# Project Ideas" > scratch/notes.md
-   draftsnap snap scratch/notes.md -m "initial brainstorm"
-   ```
-
-3. **View history**:
-   ```bash
-   draftsnap log
-   ```
-
-4. **Check differences**:
-   ```bash
-   draftsnap diff
-   ```
-
-5. **Browse the timeline** (interactive when `fzf` is present):
-   ```bash
-   draftsnap timeline
-   ```
-
-That's it! Your drafts are now versioned in `.git-scratch/` without touching your main repository.
-
-## Usage Examples
-
-### Basic Snapshot Workflow
+### Install (NodeCLI – recommended)
 
 ```bash
-# Initialize once per project
+npm install --save-dev draftsnap-node       # or pnpm add -D draftsnap-node
+```
+
+Run once without installing:
+
+```bash
+npx draftsnap-node@latest status --json
+pnpm dlx draftsnap-node@latest status --json
+```
+
+Global install:
+
+```bash
+npm install --global draftsnap-node         # or pnpm add -g draftsnap-node
+draftsnap status --json
+```
+
+### Initialize once per project
+
+```bash
 draftsnap ensure
-
-# Create and snapshot a file
-echo "first draft" > scratch/notes.md
-draftsnap snap scratch/notes.md -m "init note"
-
-# Edit and snapshot again
-echo "revised draft" >> scratch/notes.md
-draftsnap snap scratch/notes.md -m "add revision"
-
-# View history
-draftsnap log -- scratch/notes.md
 ```
 
-### Streaming from stdin
-
-Stream content directly without creating intermediate files:
+### Snapshot scratch files
 
 ```bash
-# AI assistant output piped directly
-echo "adhoc note" | draftsnap snap - -m "quick idea"
+echo "# My Draft" > scratch/notes.md
+draftsnap snap scratch/notes.md -m "purpose: initial draft"
 
-# Creates timestamped file: scratch/stream-YYYYMMDDHHMMSS.md
+echo "More detail" >> scratch/notes.md
+draftsnap snap scratch/notes.md -m "purpose: add detail"
 ```
 
-### Space-based Organization
-
-Group related drafts with spaces for better organization:
+### Explore with timeline
 
 ```bash
-# Create draft in a specific space
-echo "feature outline" > scratch/specs/feature.md
-draftsnap snap feature.md --space specs -m "outline"
-
-# Commit message includes [space:specs] for filtering
-draftsnap log --json | grep "space:specs"
+draftsnap timeline                      # interactive browser
+draftsnap timeline -- scratch/notes.md  # limit to one file
 ```
 
-### Interactive Timeline Browser
+Timeline controls:
 
-Launch an interactive view of your snapshots with live diff previews and restore shortcuts. The command automatically falls back to plain text when `fzf` is missing or output is redirected, and `--json` or `--raw` expose timeline data for automation.
+- `↑/↓` — move between snapshots
+- `Enter` — view the diff in `$PAGER` (uses `delta` when available)
+- `Ctrl+R` — restore the highlighted snapshot (with confirmation)
+- `Esc` — quit (or `Ctrl+C`)
+- `--raw` / `--json` — non-interactive fallbacks when `fzf` is unavailable or output is piped
 
-```bash
-draftsnap timeline -- scratch/notes.md
-```
+### Other essentials
 
-- Arrow keys / `j` `k` — move between commits
-- `Enter` — view the diff in your `$PAGER` (uses `delta` when installed)
-- `Ctrl+R` — restore the highlighted revision after confirmation
-- `Esc` — quit (or use `Ctrl-C`)
-- `--raw` — force the non-interactive text stream
+| Command | Purpose |
+|---------|---------|
+| `draftsnap log [--json]` | Show snapshot history as text or JSON |
+| `draftsnap snap --all -m "purpose: checkpoint"` | Snapshot every modified scratch file |
+| `draftsnap restore <rev> -- scratch/notes.md` | Restore a file from a specific snapshot |
+| `draftsnap prompt` | Print AI-friendly instructions |
 
-### Reviewing and Restoring
-
-```bash
-# View recent changes
-draftsnap diff
-
-# Compare against specific revision
-draftsnap diff HEAD~2 -- scratch/notes.md
-
-# Restore previous version
-draftsnap restore HEAD~1 -- scratch/notes.md
-```
-
-### Agent Integration
-
-Coding agents can use `draftsnap prompt` to get usage instructions:
-
-```bash
-# Get agent-friendly prompt
-draftsnap prompt
-
-# JSON format for programmatic use
-draftsnap prompt --format=json
-```
-
-Agents should:
-1. Run `draftsnap ensure --json` once per session
-2. Snapshot with `draftsnap snap <path> -m "<reason>" --json` after creating/editing drafts (or use `draftsnap snap --all -m "<reason>" --json` to commit every modified scratch file together)
-3. Parse only stdout JSON, treat exit code 10 as "no changes" (success)
-
-## Commands Reference
-
-### Core Commands
-
-#### `ensure`
-Initialize or verify the sidecar repository (idempotent).
-
-```bash
-draftsnap ensure [--json]
-```
-
-Creates `.git-scratch/`, `scratch/`, and configures `.git/info/exclude`. Safe to run multiple times.
-
-**Exit codes**: `0` (success)
+Exit codes: `0` success · `10` no changes · `11` not initialized · `12` locked · `13` precondition failed · `14` invalid arguments.
 
 ---
 
-#### `snap <path|-> [options]`
-Capture a snapshot from a file or stdin.
+## AI Integration
 
-```bash
-draftsnap snap <path> -m "message" [--space <name>] [--json]
-draftsnap snap - -m "message" [--space <name>] [--json]  # stdin mode
-draftsnap snap --all -m "message" [--json]                # bulk mode
-```
+`draftsnap prompt` prints a miniature playbook for assistants:
 
-**Options**:
-- `-m, --message <msg>` — Commit message (recommended format: `purpose: summary`)
-- `--space <name>` — Group under `scratch/<name>/` and tag commit with `[space:name]`
-- `<path>` — File path (relative to `scratch/` if not absolute)
-- `-` — Read from stdin, creates `scratch/stream-YYYYMMDDHHMMSS.md`
-- `--all` — Commit every modified file under `scratch/` in one snapshot (incompatible with `--space` or stdin)
+1. Run `draftsnap ensure` once per session
+2. Snapshot after creating or editing files in `scratch/`
+3. Use descriptive messages such as `purpose: refine intro`
+4. Handle exit codes without halting work
 
-**Exit codes**: `0` (committed), `10` (no changes)
-
-**Examples**:
-```bash
-draftsnap snap scratch/notes.md -m "purpose: add intro"
-draftsnap snap ideas.md --space drafts -m "purpose: brainstorm"
-echo "quick note" | draftsnap snap - -m "purpose: capture idea"
-draftsnap snap --all -m "purpose: checkpoint"
-```
+Share that output with your AI and tell it “use draftsnap for anything under `scratch/`.”
 
 ---
 
-#### `log [-- <path>]`
-List snapshot history with metadata.
+## Why Not Just Use Git?
 
-```bash
-draftsnap log [--json] [-- <path>]
-```
+You can—but draftsnap lowers the friction:
 
-**Arguments**:
-- `-- <path>` — Filter history by specific file path
-
-**Exit codes**: `0` (success)
-
-**Examples**:
-```bash
-draftsnap log                              # All snapshots
-draftsnap log -- scratch/notes.md          # Specific file
-draftsnap log --json | jq '.data.entries'  # Parse with jq
-```
+| Approach | Setup | Safety | AI-friendly | Overhead |
+|----------|-------|--------|-------------|----------|
+| `.git/info/exclude` | Manual | ⚠️ Easy to forget | ❌ | Low |
+| Branch-per-experiment | Manual | ✅ | ❌ | High |
+| VS Code Local History | Automatic | ⚠️ Limited | ❌ | Low |
+| **draftsnap** | One command | ✅ Sidecar repo | ✅ JSON output | Low |
 
 ---
-
-#### `timeline [-- <path>]`
-Browse snapshot history interactively with diff previews and restore shortcuts. Falls back to plain text automatically when `fzf` is unavailable or output is redirected.
-
-```bash
-draftsnap timeline [--json] [--raw] [-- <path>]
-```
-
-**Options**:
-- `--json` — Emit machine-readable timeline data (non-interactive)
-- `--raw` — Force plain-text output even on a TTY
-- `-- <path>` — Limit history to a specific file or directory under `scratch/`
-
-**Exit codes**: `0` (success), `11` (not initialized when interactive mode is requested before any snapshot exists)
-
-**Examples**:
-```bash
-draftsnap timeline                      # Interactive browser for all snapshots
-draftsnap timeline -- scratch/notes.md  # Filter to one document
-draftsnap timeline --raw | head         # Pipe-friendly plain text
-draftsnap timeline --json | jq '.data.entries[0]'
-```
-
-- **Keybindings (interactive mode)**:
-- `Enter` — view the diff via `$PAGER` (uses `delta` when installed)
-- `Ctrl+R` — restore highlighted revision after confirmation
-- `Esc` — quit (Ctrl-C also works)
-
----
-
-#### `diff [options] [-- <path>]`
-Compare snapshots or working tree changes.
-
-```bash
-draftsnap diff [--since <N>] [--current] [--json] [-- <path>]
-```
-
-**Options**:
-- `--since <N>` — Compare HEAD with N commits back (default: 1)
-- `--current` — Compare working tree with HEAD
-- `-- <path>` — Limit diff to specific path
-
-**Exit codes**: `0` (success)
-
-**Examples**:
-```bash
-draftsnap diff                        # Latest two commits
-draftsnap diff --since 3              # HEAD vs HEAD~3
-draftsnap diff --current              # Working tree vs HEAD
-draftsnap diff -- scratch/notes.md    # Specific file only
-```
-
----
-
-#### `restore <REV> -- <path>`
-Restore a file from a prior snapshot to the working tree.
-
-```bash
-draftsnap restore <REV> -- <path> [--json]
-```
-
-**Arguments**:
-- `<REV>` — Git revision (e.g., `HEAD`, `HEAD~2`, commit hash)
-- `<path>` — File path to restore
-
-Creates `.draftsnap.bak.YYYYMMDDHHMMSS` backup if file exists and differs.
-
-**Exit codes**: `0` (success), `14` (invalid revision or path)
-
-**Examples**:
-```bash
-draftsnap restore HEAD~1 -- scratch/notes.md
-draftsnap restore a1b2c3d -- scratch/ideas.md
-```
-
----
-
-### Maintenance Commands
-
-#### `prune --keep <N> [--archive <DIR>]`
-Remove old snapshots while keeping recent history.
-
-```bash
-draftsnap prune --keep <N> [--archive <DIR>] [--json]
-```
-
-**Options**:
-- `--keep <N>` — Number of recent commits to keep (required, must be ≥ 1)
-- `--archive <DIR>` — Archive removed commits as `.tar` files before pruning
-
-**Exit codes**: `0` (pruned), `10` (nothing to prune)
-
-**Examples**:
-```bash
-draftsnap prune --keep 50                      # Keep 50 recent commits
-draftsnap prune --keep 100 --archive archives  # Archive before pruning
-```
-
----
-
-#### `status`
-Report initialization state, lock status, and exclude configuration.
-
-```bash
-draftsnap status [--json]
-```
-
-**Exit codes**: `0` (success)
-
-**Output** (JSON mode):
-```json
-{
-  "status": "ok",
-  "code": 0,
-  "data": {
-    "initialized": true,
-    "git_dir": ".git-scratch",
-    "scr_dir": "scratch",
-    "locked": false,
-    "exclude": {
-      "main": {"git_dir": true, "scr_dir": true},
-      "sidecar": {"wildcard": true, "scr_dir": true, "scr_glob": true}
-    }
-  }
-}
-```
-
----
-
-### Helper Commands
-
-#### `prompt [--format <format>]`
-Output agent-oriented usage instructions.
-
-```bash
-draftsnap prompt [--format <txt|json>] [--json]
-```
-
-**Options**:
-- `--format <txt|json>` — Output format (default: `txt`)
-
-**Exit codes**: `0` (success)
-
-**Examples**:
-```bash
-draftsnap prompt                    # Human-readable instructions
-draftsnap prompt --format=json      # Machine-readable format
-```
-
----
-
-#### `help [--format <format>]`
-Show command summary and exit codes.
-
-```bash
-draftsnap help [--format <txt|json>] [--json]
-```
-
-**Options**:
-- `--format <txt|json>` — Output format (default: `txt`)
-
-**Exit codes**: `0` (success)
-
----
-
-### Global Flags
-
-All commands accept these global flags:
-
-- `--json` — Emit structured JSON on stdout (schema: `{"status","code","data","warnings?"}`)
-
-**Note**: `--dry-run`, `--quiet`, `--debug` are reserved for future use.
-
----
-
-### Exit Codes
-
-| Code | Meaning | Description |
-|------|---------|-------------|
-| `0` | Success | Operation completed successfully |
-| `10` | No changes | Operation succeeded but made no modifications |
-| `11` | Not initialized | Sidecar repository not found |
-| `12` | Locked | Another process holds the lock |
-| `13` | Precondition failed | Operation prerequisites not met |
-| `14` | Invalid arguments | Invalid command arguments or options |
 
 ## Configuration
 
-Configure via environment variables:
+Optional environment variables:
 
 ```bash
-# Scratch directory (default: scratch)
-export DRAFTSNAP_SCR_DIR=notes
-
-# Sidecar git directory (default: .git-scratch)
-export DRAFTSNAP_GIT_DIR=.git-drafts
-
-# Work tree (default: .)
-export DRAFTSNAP_WORK_TREE=.
+export DRAFTSNAP_SCR_DIR=notes        # default: scratch
+export DRAFTSNAP_GIT_DIR=.git-scratch # default: .git-scratch
 ```
+
+---
 
 ## Development
 
-### Running Tests
-
 ```bash
-# Bootstrap Bats test runner (first time only)
-./scripts/bootstrap-bats.sh
+./scripts/bootstrap-bats.sh            # install Bats test runner
+./vendor/bats-core/bin/bats tests      # Bash CLI coverage
 
-# Run full test suite
-./vendor/bats-core/bin/bats tests
-
-# Run specific test file
-./vendor/bats-core/bin/bats tests/snap.bats
-
-# Run quality checks (shellcheck + tests)
-./scripts/check.sh
+cd draftsnap-node
+pnpm install
+pnpm exec vitest                       # Node CLI tests
+pnpm run build                         # produce dist/index.js
 ```
 
-### TDD Workflow
+Follow coding guidelines in `AGENTS.md` and check `work-plan.md` for backlog ideas.
 
-This project follows Test-Driven Development:
+---
 
-1. Add failing test to appropriate `tests/*.bats` file
-2. Run `./vendor/bats-core/bin/bats tests` to verify failure
-3. Implement minimal code in `bin/draftsnap`
-4. Run tests again to verify success
-5. Refactor as needed
+## Current Release
 
-See `work-plan.md` for the feature backlog and `AGENTS.md` for coding conventions.
+**draftsnap-node v0.3.0**
 
-### Release Process
+- Adds a first-class `draftsnap timeline` command with `fzf` preview, JSON/RAW fallbacks, and in-terminal restore prompts
+- Standardizes keybindings (`Enter` for diff, `Ctrl+R` to restore, `Esc` to quit)
+- Updates docs/tests to describe and exercise the new workflow
 
-Releases are cut from the `main` branch:
-
-1. Ensure tests pass: `./scripts/check.sh`
-2. Build release binary and checksum:
-   ```bash
-   rm -rf dist && mkdir dist
-   cp bin/draftsnap dist/draftsnap
-   shasum -a 256 dist/draftsnap > dist/draftsnap.sha256
-   ```
-3. Tag and push:
-   ```bash
-   git tag v0.1.X
-   git push origin v0.1.X
-   ```
-4. Create GitHub Release:
-   ```bash
-   gh release create v0.1.X dist/draftsnap dist/draftsnap.sha256 \
-     --title "draftsnap v0.1.X" \
-     --notes "Release notes"
-   ```
-
-## Resources
-
-- **Documentation**: See `CLAUDE.md` for AI assistant guidance
-- **Architecture**: See `AGENTS.md` for implementation details
-- **Backlog**: See `work-plan.md` for planned features
+---
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT – see [LICENSE](LICENSE).
 
-Copyright (c) 2025 annenpolka
+---
+
+## Credits
+
+draftsnap exists because AI pair programming encourages rapid, disposable drafts. By giving those drafts a lightweight safety net, you can explore confidently and recover instantly—no branches, no merge conflicts, and no “wait, what did we just overwrite?” moments.
