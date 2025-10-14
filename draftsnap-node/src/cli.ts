@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module'
 import type { CAC } from 'cac'
 import cac from 'cac'
 import { diffCommand } from './commands/diff.js'
@@ -12,6 +13,9 @@ import { timelineCommand } from './commands/timeline.js'
 import { DraftsnapError, ExitCode } from './types/errors.js'
 import { createLogger } from './utils/logger.js'
 import { readAllStdin } from './utils/stdin.js'
+
+const require = createRequire(import.meta.url)
+const packageJson = require('../package.json') as { version?: string }
 
 const DEFAULT_HINT =
   'draftsnap: run `draftsnap --help` for commands or `draftsnap prompt` for agent guidance.'
@@ -252,7 +256,7 @@ export async function run(argv: string[]): Promise<void> {
     })
 
   cli.help()
-  cli.version('0.1.0')
+  cli.version(packageJson.version ?? '0.0.0')
 
   if (argv.length === 0) {
     printDefaultHintJson(false)
