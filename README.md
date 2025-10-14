@@ -225,16 +225,6 @@ Follow coding guidelines in `AGENTS.md` and check `work-plan.md` for backlog ide
 
 ---
 
-## Current Release
-
-**draftsnap-node v0.3.0**
-
-- Adds a first-class `draftsnap timeline` command with `fzf` preview, JSON/RAW fallbacks, and in-terminal restore prompts
-- Standardizes keybindings (`Enter` for diff, `Ctrl+R` to restore, `Esc` to quit)
-- Updates docs/tests to describe and exercise the new workflow
-
----
-
 ## License
 
 MIT – see [LICENSE](LICENSE).
