@@ -2,10 +2,10 @@ import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ensureCommand } from '../../../src/commands/ensure.js'
-import { snapCommand } from '../../../src/commands/snap.js'
-import { timelineCommand } from '../../../src/commands/timeline.js'
-import { createLogger } from '../../../src/utils/logger.js'
+import { ensureCommand } from '../../../../src/commands/ensure.js'
+import { snapCommand } from '../../../../src/commands/snap.js'
+import { timelineCommand } from '../../../../src/commands/timeline.js'
+import { createLogger } from '../../../../src/utils/logger.js'
 
 describe('timelineCommand interactive mode', () => {
   let workTree: string

@@ -2,7 +2,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { createGitClient, GitError } from '../../../src/core/git.js'
+import { createGitClient, GitError } from '../../../../src/core/git.js'
 
 const TMP_PREFIX = 'draftsnap-node-git-' as const
 

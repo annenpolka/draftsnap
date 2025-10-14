@@ -3,8 +3,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { LockManager } from '../../../src/core/lock.js'
-import { LockError } from '../../../src/types/errors.js'
+import { LockManager } from '../../../../src/core/lock.js'
+import { LockError } from '../../../../src/types/errors.js'
 
 const TMP_PREFIX = 'draftsnap-node-lock-' as const
 

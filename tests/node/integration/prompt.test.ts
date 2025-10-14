@@ -2,11 +2,11 @@ import { execFile } from 'node:child_process'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { describe, expect, it } from 'vitest'
-import { PROMPT_TEXT } from '../../src/commands/prompt.js'
+import { PROMPT_TEXT } from '../../../src/commands/prompt.js'
 
 const execFileAsync = promisify(execFile)
 
-const DIST_CLI = join(__dirname, '../../dist/index.js')
+const DIST_CLI = join(__dirname, '../../../dist/index.js')
 
 describe('prompt command', () => {
   it('prints guidance text', async () => {

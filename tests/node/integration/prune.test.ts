@@ -2,12 +2,12 @@ import { appendFile, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ensureCommand } from '../../src/commands/ensure.js'
-import { logCommand } from '../../src/commands/log.js'
-import { pruneCommand } from '../../src/commands/prune.js'
-import { snapCommand } from '../../src/commands/snap.js'
-import { ExitCode } from '../../src/types/errors.js'
-import { createLogger } from '../../src/utils/logger.js'
+import { ensureCommand } from '../../../src/commands/ensure.js'
+import { logCommand } from '../../../src/commands/log.js'
+import { pruneCommand } from '../../../src/commands/prune.js'
+import { snapCommand } from '../../../src/commands/snap.js'
+import { ExitCode } from '../../../src/types/errors.js'
+import { createLogger } from '../../../src/utils/logger.js'
 
 describe('prune command', () => {
   let workTree: string

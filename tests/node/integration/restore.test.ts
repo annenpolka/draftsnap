@@ -2,11 +2,11 @@ import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ensureCommand } from '../../src/commands/ensure.js'
-import { restoreCommand } from '../../src/commands/restore.js'
-import { snapCommand } from '../../src/commands/snap.js'
-import { ExitCode, InvalidArgsError } from '../../src/types/errors.js'
-import { createLogger } from '../../src/utils/logger.js'
+import { ensureCommand } from '../../../src/commands/ensure.js'
+import { restoreCommand } from '../../../src/commands/restore.js'
+import { snapCommand } from '../../../src/commands/snap.js'
+import { ExitCode, InvalidArgsError } from '../../../src/types/errors.js'
+import { createLogger } from '../../../src/utils/logger.js'
 
 describe('restore command', () => {
   let workTree: string

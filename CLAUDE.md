@@ -8,11 +8,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Core Architecture
 
-- **Single-file Bash script**: `bin/draftsnap` contains all functionality (~700 lines)
-- **Sidecar repository pattern**: Uses separate `.git-scratch/` directory, never touches main repo
-- **Safe by design**: No remote, automatic lock-based exclusion, `.git/info/exclude` instead of `.gitignore`
-- **JSON-first API**: All commands support `--json` for machine-readable output with consistent schema `{"status","code","data","warnings"}`
-- **Exit codes**: `0=OK`, `10=NO_CHANGES`, `11=NOT_INITIALIZED`, `12=LOCKED`, `13=PRECONDITION_FAILED`, `14=INVALID_ARGS`
+- **TypeScript CLI (ESM)**: `src/` hosts the primary implementation bundled via `tsup` into `dist/index.js` and exposed as the `draftsnap` binary.
+- **Sidecar repository pattern**: Uses separate `.git-scratch/` directory, never touches the main repo.
+- **Safe by design**: No remote, automatic lock-based exclusion, `.git/info/exclude` instead of `.gitignore`.
+- **JSON-first API**: All commands support `--json` for machine-readable output with consistent schema `{"status","code","data","warnings"}`.
+- **Exit codes**: `0=OK`, `10=NO_CHANGES`, `11=NOT_INITIALIZED`, `12=LOCKED`, `13=PRECONDITION_FAILED`, `14=INVALID_ARGS`.
+- **Legacy**: `bin/draftsnap` (Bash) remains for historical reference but should not receive new features.
 
 ## Key Design Principles
 
@@ -24,28 +25,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-### Test Execution
+### Quality Gates
 ```bash
-# Bootstrap Bats test runner (first time only)
-./scripts/bootstrap-bats.sh
-
-# Run full test suite (always run before commits)
-./vendor/bats-core/bin/bats tests
-
-# Run specific test file
-./vendor/bats-core/bin/bats tests/snap.bats
-
-# Run with timing
-time ./vendor/bats-core/bin/bats tests
-```
-
-### Quality Checks
-```bash
-# Run shellcheck and full test suite
-./scripts/check.sh
-
-# Manual shellcheck (if installed)
-shellcheck bin/draftsnap
+pnpm install --frozen-lockfile
+pnpm lint
+pnpm typecheck
+pnpm test --run
+pnpm run build
 ```
 
 ### Local Testing Workflow
@@ -79,22 +65,20 @@ rm -rf .git-scratch scratch
 
 ## Testing Guidelines
 
-- **Framework**: Bats (vendored in `vendor/bats-core/`)
-- **Test organization**: One file per command in `tests/*.bats`
-- **Setup pattern**: Each test creates temporary Git repo with `setup()` hook
+- **Framework**: [Vitest](https://vitest.dev/) (integration + unit coverage in `tests/node/`)
+- **Setup pattern**: Each test spins up a temporary Git repo; see helpers under `tests/node/setup/`
 - **Coverage requirements**:
-  - Both JSON and human output modes
+  - JSON and human output modes
   - Success and failure paths
   - Edge cases (no changes, locked, uninitialized)
   - Idempotency verification
 
 ## Code Style
 
-- Bash 4+ with `set -euo pipefail`
-- Two-space indentation
-- Helper functions: `git_side()`, `json_escape()`, `acquire_lock()`, `ensure_exclude_line()`
-- Consistent error handling: `fail()` for fatal errors, `log()` for informational output
-- Lock management: `acquire_lock()` with trap-based `release_lock()`
+- TypeScript (ESM) targeting Node 18+; formatted and linted via Biome (`pnpm lint`)
+- Prefer small modules (`src/commands`, `src/core`, `src/utils`) with explicit exports
+- Use descriptive error types (see `src/types/errors.ts`) and structured logging helpers
+- Legacy Bash code remains read-only; avoid introducing new Bash functionality
 
 ## Environment Variables
 
@@ -104,21 +88,20 @@ rm -rf .git-scratch scratch
 
 ## Release Process
 
-1. Verify tests pass: `./scripts/check.sh`
-2. Build release artifact:
+1. Verify quality gates locally:
    ```bash
-   rm -rf dist && mkdir dist
-   cp bin/draftsnap dist/draftsnap
-   shasum -a 256 dist/draftsnap > dist/draftsnap.sha256
+   pnpm install --frozen-lockfile
+   pnpm lint && pnpm typecheck
+   pnpm test --run
+   pnpm run build
    ```
-3. Tag version: `git tag v0.1.X`
-4. Push tag: `git push origin v0.1.X`
-5. Create GitHub release:
+2. Smoke test the bundled CLI (optional):
    ```bash
-   gh release create v0.1.X dist/draftsnap dist/draftsnap.sha256 \
-     --title "draftsnap v0.1.X" \
-     --notes "Release notes"
+   node dist/index.js status --json
    ```
+3. Publish package: `pnpm publish --access public`
+4. Tag release: `git tag draftsnap-node-vX.Y.Z && git push origin draftsnap-node-vX.Y.Z`
+5. Create GitHub release summarizing changes (link to changelog entry).
 
 ## Agent Integration
 
@@ -132,13 +115,13 @@ Basic agent workflow:
 
 ## Important Files
 
-- `bin/draftsnap`: Single-file CLI implementation
-- `tests/*.bats`: Bats test suites organized by command
+- `src/`: TypeScript sources (commands, core, utilities)
+- `dist/`: Bundled artifacts produced via `pnpm run build`
+- `tests/node/`: Vitest suites for integration and unit coverage
 - `AGENTS.md`: Repository guidelines and coding conventions
 - `work-plan.md`: Feature backlog and TDD task checklist
 - `project-summary.md`: Original design conversations and rationale
-- `scripts/bootstrap-bats.sh`: Bats runner setup
-- `scripts/check.sh`: Pre-commit quality gate
+- `bin/draftsnap`: Legacy Bash CLI (reference only)
 
 ## Notes
 

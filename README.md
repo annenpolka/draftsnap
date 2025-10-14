@@ -212,12 +212,10 @@ export DRAFTSNAP_GIT_DIR=.git-scratch # default: .git-scratch
 ## Development
 
 ```bash
-./scripts/bootstrap-bats.sh            # install Bats test runner
-./vendor/bats-core/bin/bats tests      # Bash CLI coverage
-
-cd draftsnap-node
-pnpm install
-pnpm exec vitest                       # Node CLI tests
+pnpm install --frozen-lockfile         # install dependencies at repo root
+pnpm lint                              # Biome linting (src/, tests/node/)
+pnpm typecheck                         # TypeScript type checks
+pnpm test --run                        # Vitest integration/unit suites
 pnpm run build                         # produce dist/index.js
 ```
 

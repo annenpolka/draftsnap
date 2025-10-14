@@ -8,8 +8,11 @@ report.tap
 /tests/tmp/
 /tests/output/
 
+# Node / package manager
+node_modules/
+coverage/
+
 # Editors
 .DS_Store
 *.swp
 *~
-dist/

@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { sanitizeTargetPath } from '../../../src/utils/path.js'
+import { sanitizeTargetPath } from '../../../../src/utils/path.js'
 
 const SCR_DIR = 'scratch'
 
