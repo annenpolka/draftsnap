@@ -10,6 +10,7 @@ import { statusCommand } from './commands/status.js'
 import { DraftsnapError, ExitCode } from './types/errors.js'
 import { createLogger } from './utils/logger.js'
 import { readAllStdin } from './utils/stdin.js'
+import { PROMPT_TEXT, promptCommand } from './commands/prompt.js'
 
 const DEFAULT_HINT =
   'draftsnap: run `draftsnap --help` for commands or `draftsnap prompt` for agent guidance.'
@@ -214,6 +215,20 @@ export async function run(argv: string[]): Promise<void> {
           printJson(result)
         }
       })
+    })
+
+  cli
+    .command('prompt', 'Display guidance for using draftsnap safely')
+    .option('--json', 'Output guidance as JSON')
+    .action(async (options) => {
+      const json = toBoolean(options.json)
+      const output = promptCommand(json)
+      if (json) {
+        printJson(output)
+      } else {
+        console.log(output)
+      }
+      process.exitCode = ExitCode.OK
     })
 
   cli.help()
