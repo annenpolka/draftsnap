@@ -1,4 +1,6 @@
-# Bats 導入方針
+# Bats 導入方針 (Legacy)
+
+> **注意**: draftsnap の現行開発はルート直下の TypeScript CLI と Vitest を前提としています。本ドキュメントは Bash + Bats ベースの旧フローを記録したレガシー資料です。Bash CLI を削除するまでは参考情報として残していますが、新しい機能追加や CI は pnpm / Vitest を使用してください。
 
 ## 目的
 - TDD の土台となるシェルテストを、追加依存を極力抑えつつ macOS/Linux どちらでも再現できるようにする。

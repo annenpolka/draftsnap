@@ -1,4 +1,4 @@
-name: Checks
+name: CI
 
 on:
   push:
@@ -6,17 +6,37 @@ on:
   pull_request:
 
 jobs:
-  check:
+  node-workflow:
     runs-on: ubuntu-latest
+    env:
+      CI: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install shellcheck
-        run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+          run_install: false
 
-      - name: Bootstrap Bats test runner
-        run: ./scripts/bootstrap-bats.sh
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
 
-      - name: Run draftsnap checks
-        run: ./scripts/check.sh
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run lint
+        run: pnpm lint
+
+      - name: Run typecheck
+        run: pnpm typecheck
+
+      - name: Run tests
+        run: pnpm test --run
+
+      - name: Build dist
+        run: pnpm run build
