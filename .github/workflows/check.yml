@@ -29,6 +29,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure git user for tests
+        run: |
+          git config --global user.name "draftsnap CI"
+          git config --global user.email "ci@draftsnap.local"
+
       - name: Run lint
         run: pnpm lint
 
