@@ -10,9 +10,14 @@
 
 ## The Problem
 
-You ask an AI to “make this design more detailed” and it rewrites the entire document. Two prompts later you decide the simpler version was better—but you never saved it. When you say “go back,” the model shrugs; you have no diff, no history, and no way to recover the draft you liked.
+```
+You: "Make this design more detailed."
+AI:  [rewrites everything]
+You: "Actually, the simple version was better."
+AI:  "I don't have the old one anymore."
+```
 
-This happens all the time when pair programming with AI. Git can help, but only if you manually manage branches, exclusions, and commit messages. That overhead kills flow.
+You just lost the draft you liked. This happens constantly when pair programming with an AI: you explore, it rewrites, and the version you wanted is gone. Git can rescue you, but only if you juggle branches, excludes, and commit discipline—and that overhead kills flow.
 
 ---
 
