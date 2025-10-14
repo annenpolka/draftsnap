@@ -4,7 +4,8 @@
 [![Latest Release](https://img.shields.io/github/v/release/annenpolka/draftsnap)](https://github.com/annenpolka/draftsnap/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Undo for AI pair programming.** Keep experiments in `scratch/`, snapshot automatically, and rewind instantly.
+**Version control for AI design docs. Local. Never pushed.**
+Snapshot scratch/ files—plans, notes, explorations.
 
 ---
 
