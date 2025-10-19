@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **TypeScript CLI (ESM)**: `src/` hosts the primary implementation bundled via `tsup` into `dist/index.js` and exposed as the `draftsnap` binary.
 - **Sidecar repository pattern**: Uses separate `.git-scratch/` directory, never touches the main repo.
 - **Safe by design**: No remote, automatic lock-based exclusion, `.git/info/exclude` instead of `.gitignore`.
-- **JSON-first API**: All commands support `--json` for machine-readable output with consistent schema `{"status","code","data","warnings"}`.
+- **JSON-first API**: All commands support `--json` for machine-readable output with consistent schema `{"status","code","data"}`.
 - **Exit codes**: `0=OK`, `10=NO_CHANGES`, `11=NOT_INITIALIZED`, `12=LOCKED`, `13=PRECONDITION_FAILED`, `14=INVALID_ARGS`.
 - **Legacy**: `bin/draftsnap` (Bash) remains for historical reference but should not receive new features.
 
@@ -60,8 +60,8 @@ rm -rf .git-scratch scratch
 ### Helper Commands
 - `log`, `diff`, `restore`: History inspection and recovery
 - `prune --keep N|--days D`: Cleanup with optional `--archive` for safety
-- `protect on|off|status`: Manages `.git/info/exclude` entries
-- `status`: Reports initialization state, lock state, and exclude guard status
+- `timeline`: Interactive timeline browser for commit history
+- `status`: Reports initialization state and lock state
 
 ## Testing Guidelines
 
