@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -23,6 +23,7 @@ describe('status command', () => {
 
   it('reports initialized and unlocked state', async () => {
     const logger = createLogger({ json: true })
+    await mkdir(join(workTree, '.git'))
     await ensureCommand({ workTree, gitDir, scratchDir, json: true, logger })
 
     const result = await statusCommand({ workTree, gitDir, scratchDir, json: true, logger })
@@ -38,6 +39,7 @@ describe('status command', () => {
 
   it('reports lock status when lock directory exists', async () => {
     const logger = createLogger({ json: true })
+    await mkdir(join(workTree, '.git'))
     await ensureCommand({ workTree, gitDir, scratchDir, json: true, logger })
 
     const lock = new LockManager(gitDir)
@@ -48,5 +50,19 @@ describe('status command', () => {
     expect(result.data.exclude.main.gitDir).toBe(true)
 
     lock.release()
+  })
+
+  it('handles git worktree layouts with gitdir file', async () => {
+    const logger = createLogger({ json: true })
+    const mainGitDir = join(workTree, 'main.git')
+    await rm(join(workTree, '.git'), { recursive: true, force: true })
+    await writeFile(join(workTree, '.git'), `gitdir: ${mainGitDir}\n`)
+
+    await ensureCommand({ workTree, gitDir, scratchDir, json: true, logger })
+    const result = await statusCommand({ workTree, gitDir, scratchDir, json: true, logger })
+
+    expect(result.data.initialized).toBe(true)
+    expect(result.data.exclude.main.gitDir).toBe(true)
+    expect(result.data.exclude.main.scrDir).toBe(true)
   })
 })

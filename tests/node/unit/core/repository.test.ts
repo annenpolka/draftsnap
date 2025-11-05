@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
@@ -38,9 +38,24 @@ describe('ensureSidecar', () => {
   })
 
   it('ensures exclude entries for scratch and git dir', async () => {
+    await mkdir(join(workTree, '.git'))
     await ensureSidecar({ workTree, gitDir, scratchDir: SCR_DIR })
 
     const excludePath = join(workTree, '.git', 'info', 'exclude')
+    const contents = await readFile(excludePath, 'utf8')
+
+    expect(contents).toEqual(expect.stringContaining('scratch/'))
+    expect(contents).toEqual(expect.stringContaining('.git-scratch/'))
+  })
+
+  it('writes excludes when .git is a gitdir file', async () => {
+    const mainGitDir = join(workTree, 'main.git')
+    await mkdir(join(mainGitDir, 'info'), { recursive: true })
+    await writeFile(join(workTree, '.git'), `gitdir: ${mainGitDir}\n`)
+
+    await ensureSidecar({ workTree, gitDir, scratchDir: SCR_DIR })
+
+    const excludePath = join(mainGitDir, 'info', 'exclude')
     const contents = await readFile(excludePath, 'utf8')
 
     expect(contents).toEqual(expect.stringContaining('scratch/'))

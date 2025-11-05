@@ -11,6 +11,7 @@ report.tap
 # Node / package manager
 node_modules/
 coverage/
+.pnpm-store/
 
 # Editors
 .DS_Store

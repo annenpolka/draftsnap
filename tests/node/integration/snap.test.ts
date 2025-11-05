@@ -97,6 +97,38 @@ describe('snap command', () => {
     expect(result.data.files_count).toBe(2)
   })
 
+  it('includes deletions when using --all', async () => {
+    const logger = createLogger({ json: true })
+    const target = join(workTree, scratchDir, 'obsolete.md')
+    await writeFile(target, 'temporary\n')
+    await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      path: 'scratch/obsolete.md',
+      message: 'purpose: seed obsolete',
+    })
+
+    await rm(target)
+
+    const result = await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger,
+      all: true,
+      message: 'purpose: remove obsolete',
+    })
+
+    expect(result.code).toBe(ExitCode.OK)
+    expect(result.data.paths).toEqual(['scratch/obsolete.md'])
+    expect(result.data.files_count).toBe(1)
+    expect(result.data.bytes).toBe(0)
+  })
+
   it('captures file paths under a space when provided', async () => {
     const logger = createLogger({ json: true })
     const result = await snapCommand({

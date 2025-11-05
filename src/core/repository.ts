@@ -1,6 +1,7 @@
 import type { Dirent } from 'node:fs'
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join, relative } from 'node:path'
+import { resolveMainGitDir } from '../utils/gitdir.js'
 import { createGitClient } from './git.js'
 
 interface EnsureSidecarOptions {
@@ -67,9 +68,21 @@ async function listFiles(root: string): Promise<string[]> {
   return results.sort()
 }
 
-async function ensureExclude(workTree: string, scratchDir: string, gitDir: string): Promise<void> {
-  const excludePath = join(workTree, '.git', 'info', 'exclude')
-  const excludeDir = join(workTree, '.git', 'info')
+interface EnsureExcludeOptions {
+  workTree: string
+  scratchDir: string
+  gitDir: string
+  mainGitDir: string | null
+}
+
+async function ensureExclude(options: EnsureExcludeOptions): Promise<void> {
+  const { workTree, scratchDir, gitDir, mainGitDir } = options
+  if (!mainGitDir) {
+    return
+  }
+
+  const excludePath = join(mainGitDir, 'info', 'exclude')
+  const excludeDir = join(mainGitDir, 'info')
   await mkdir(excludeDir, { recursive: true })
 
   const gitDirRelative = relative(workTree, gitDir) || gitDir
@@ -135,7 +148,8 @@ export async function ensureSidecar(options: EnsureSidecarOptions): Promise<Ensu
   }
 
   await mkdir(join(workTree, scratchDir), { recursive: true })
-  await ensureExclude(workTree, scratchDir, gitDir)
+  const mainGitDir = await resolveMainGitDir(workTree)
+  await ensureExclude({ workTree, scratchDir, gitDir, mainGitDir })
   await ensureSidecarExclude(gitDir, scratchDir)
 
   const filesRoot = join(workTree, scratchDir)

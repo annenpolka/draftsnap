@@ -1,6 +1,8 @@
 import { readFile, stat } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { ExitCode } from '../types/errors.js'
+import { isErrno } from '../utils/fs.js'
+import { resolveMainGitDir } from '../utils/gitdir.js'
 import type { Logger } from '../utils/logger.js'
 
 interface StatusCommandOptions {
@@ -65,22 +67,21 @@ export async function statusCommand(options: StatusCommandOptions): Promise<Stat
           .filter(Boolean),
       )
     } catch (error) {
-      if (
-        error &&
-        typeof error === 'object' &&
-        'code' in error &&
-        (error as NodeJS.ErrnoException).code === 'ENOENT'
-      ) {
+      if (isErrno(error, 'ENOENT') || isErrno(error, 'ENOTDIR')) {
         return new Set()
       }
       throw error
     }
   }
 
-  const mainExcludePath = join(workTree, '.git', 'info', 'exclude')
-  const mainExclude = await readExcludeLines(mainExcludePath)
+  const mainGitDir = await resolveMainGitDir(workTree)
+  const mainExclude = mainGitDir
+    ? await readExcludeLines(join(mainGitDir, 'info', 'exclude'))
+    : new Set<string>()
   const gitDirRelative = relative(workTree, gitDir) || gitDir
-  const mainGitDir = mainExclude.has(`${gitDirRelative}${gitDirRelative.endsWith('/') ? '' : '/'}`)
+  const mainGitDirEntry = mainExclude.has(
+    `${gitDirRelative}${gitDirRelative.endsWith('/') ? '' : '/'}`,
+  )
   const mainScrDir = mainExclude.has(`${scratchDir}/`)
 
   const sideExcludePath = join(gitDir, 'info', 'exclude')
@@ -95,7 +96,7 @@ export async function statusCommand(options: StatusCommandOptions): Promise<Stat
     logger.info(headExists ? 'initialized: yes' : 'initialized: no')
     logger.info(lockExists ? 'locked: yes' : 'locked: no')
     logger.info(
-      `main exclude - git_dir: ${mainGitDir ? 'true' : 'false'}, scr_dir: ${mainScrDir ? 'true' : 'false'}`,
+      `main exclude - git_dir: ${mainGitDirEntry ? 'true' : 'false'}, scr_dir: ${mainScrDir ? 'true' : 'false'}`,
     )
     logger.info(
       `sidecar exclude - wildcard: ${sideWildcard ? 'true' : 'false'}, scr_dir: ${sideScrDir ? 'true' : 'false'}, scr_glob: ${sideScrGlob ? 'true' : 'false'}`,
@@ -112,7 +113,7 @@ export async function statusCommand(options: StatusCommandOptions): Promise<Stat
       scratchDir,
       exclude: {
         main: {
-          gitDir: mainGitDir,
+          gitDir: mainGitDirEntry,
           scrDir: mainScrDir,
         },
         sidecar: {

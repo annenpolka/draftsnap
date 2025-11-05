@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, rename, rm, symlink, unlink } from 'node:fs/promises'
+import { mkdtemp, rename, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -68,14 +68,11 @@ export async function pruneCommand(options: PruneCommandOptions): Promise<PruneC
   const removedCommits = commits.slice(0, removeCount)
 
   const tmpClone = await mkdtemp(join(tmpdir(), 'draftsnap-node-prune-'))
-  const tempGitLink = join(workTree, '.git')
 
   try {
-    await rm(tempGitLink, { recursive: true, force: true }).catch(() => null)
-    await symlink(gitDir, tempGitLink)
     await execFileAsync(
       'git',
-      ['clone', '--quiet', '--depth', String(keep), '--no-checkout', '.', tmpClone],
+      ['clone', '--quiet', '--depth', String(keep), '--no-checkout', gitDir, tmpClone],
       {
         cwd: workTree,
         env: { ...process.env },
@@ -102,7 +99,6 @@ export async function pruneCommand(options: PruneCommandOptions): Promise<PruneC
       },
     }
   } finally {
-    await unlink(tempGitLink).catch(() => {})
     await rm(tmpClone, { recursive: true, force: true })
   }
 }

@@ -4,6 +4,7 @@ import { createGitClient } from '../core/git.js'
 import { LockManager } from '../core/lock.js'
 import { ensureSidecar } from '../core/repository.js'
 import { ExitCode, InvalidArgsError } from '../types/errors.js'
+import { isErrno } from '../utils/fs.js'
 import type { Logger } from '../utils/logger.js'
 import { sanitizeTargetPath } from '../utils/path.js'
 
@@ -149,8 +150,15 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
 
     let totalBytes = 0
     for (const staged of stagedPaths) {
-      const size = await stat(join(workTree, staged))
-      totalBytes += size.size
+      try {
+        const size = await stat(join(workTree, staged))
+        totalBytes += size.size
+      } catch (error) {
+        if (isErrno(error, 'ENOENT')) {
+          continue
+        }
+        throw error
+      }
     }
 
     const baseMessage = message ?? (all ? 'snap: all' : `snap: ${targetPath}`)

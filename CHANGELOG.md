@@ -2,6 +2,15 @@
 
 All notable changes will be documented in this file. This project adheres to [SemVer](https://semver.org/spec/v2.0.0.html) while still pre-1.0.
 
+## [0.3.2] - 2025-11-05
+
+### Fixed
+- `snap --all` no longer crashes when previously tracked files are deleted; staged bytes are calculated only for entries that still exist on disk.
+- `ensure` and `status` detect `.git` indirection files produced by `git worktree`, so exclude entries are always managed in the correct repository.
+
+### Changed
+- `prune` now clones directly from the sidecar Git directory instead of temporarily replacing the main `.git`, preventing worktree conflicts during cleanup.
+
 ## [0.3.1] - 2025-10-14
 
 ### Fixed
@@ -46,6 +55,7 @@ All notable changes will be documented in this file. This project adheres to [Se
 - Missing `path` metadata in log entries when filtering by file.
 - Incomplete exclude configuration when initialising sidecars.
 
+[0.3.2]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.3.2
 [0.3.1]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.3.1
 [0.3.0]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.3.0
 [0.2.1]: https://github.com/annenpolka/draftsnap/releases/tag/draftsnap-node-v0.2.1
