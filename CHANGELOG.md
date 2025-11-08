@@ -2,6 +2,16 @@
 
 All notable changes will be documented in this file. This project adheres to [SemVer](https://semver.org/spec/v2.0.0.html) while still pre-1.0.
 
+## [0.4.0] - 2025-11-08
+
+### Added
+- Added `workingTree` field to `status` command output, reporting uncommitted changes in the scratch repository:
+  - `hasUncommittedChanges`: Boolean flag indicating if there are any uncommitted changes
+  - `modified`: Array of modified file paths
+  - `added`: Array of newly added file paths (including untracked files)
+  - `deleted`: Array of deleted file paths
+- Human-readable status output now displays uncommitted changes summary with file counts
+
 ## [0.3.2] - 2025-11-05
 
 ### Fixed

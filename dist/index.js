@@ -1066,6 +1066,45 @@ async function snapCommand(options) {
 // src/commands/status.ts
 import { readFile as readFile3, stat as stat5 } from "fs/promises";
 import { join as join7, relative as relative3 } from "path";
+function parseGitStatus(output) {
+  const lines = output.split("\n").filter(Boolean);
+  const modified = /* @__PURE__ */ new Set();
+  const added = /* @__PURE__ */ new Set();
+  const deleted = /* @__PURE__ */ new Set();
+  for (const line of lines) {
+    if (line.length < 3) continue;
+    const statusCode = line.slice(0, 2);
+    const filePath = line.slice(3).trim();
+    if (filePath.endsWith("/")) {
+      continue;
+    }
+    const actualFilePath = filePath.includes(" -> ") ? filePath.split(" -> ")[1].trim() : filePath;
+    const staged = statusCode[0];
+    const unstaged = statusCode[1];
+    if (statusCode === "??") {
+      added.add(actualFilePath);
+      continue;
+    }
+    if (staged === "M" || unstaged === "M") {
+      modified.add(actualFilePath);
+    }
+    if (staged === "A" || staged === "C") {
+      added.add(actualFilePath);
+    }
+    if (staged === "D" || unstaged === "D") {
+      deleted.add(actualFilePath);
+    }
+    if (staged === "R") {
+      modified.add(actualFilePath);
+    }
+  }
+  return {
+    modified: Array.from(modified).sort(),
+    added: Array.from(added).sort(),
+    deleted: Array.from(deleted).sort(),
+    hasChanges: modified.size + added.size + deleted.size > 0
+  };
+}
 async function exists(path) {
   try {
     await stat5(path);
@@ -1106,6 +1145,31 @@ async function statusCommand(options) {
   const sideWildcard = sideExclude.has("*");
   const sideScrDir = sideExclude.has(`!${scratchDir}/`);
   const sideScrGlob = sideExclude.has(`!${scratchDir}/**`);
+  let workingTreeStatus = {
+    hasUncommittedChanges: false,
+    modified: [],
+    added: [],
+    deleted: []
+  };
+  if (headExists) {
+    try {
+      const git = createGitClient({ workTree, gitDir });
+      const { stdout } = await git.exec(["status", "--porcelain"]);
+      const parsed = parseGitStatus(stdout);
+      const scratchPrefix = `${scratchDir}/`;
+      workingTreeStatus = {
+        hasUncommittedChanges: parsed.hasChanges,
+        modified: parsed.modified.filter((file) => file.startsWith(scratchPrefix)),
+        added: parsed.added.filter((file) => file.startsWith(scratchPrefix)),
+        deleted: parsed.deleted.filter((file) => file.startsWith(scratchPrefix))
+      };
+      workingTreeStatus.hasUncommittedChanges = workingTreeStatus.modified.length > 0 || workingTreeStatus.added.length > 0 || workingTreeStatus.deleted.length > 0;
+    } catch (error) {
+      if (!json) {
+        logger.warn(`failed to get working tree status: ${error}`);
+      }
+    }
+  }
   if (!json) {
     logger.info(`git dir: ${gitDir}`);
     logger.info(`scratch dir: ${scratchDir}`);
@@ -1117,6 +1181,14 @@ async function statusCommand(options) {
     logger.info(
       `sidecar exclude - wildcard: ${sideWildcard ? "true" : "false"}, scr_dir: ${sideScrDir ? "true" : "false"}, scr_glob: ${sideScrGlob ? "true" : "false"}`
     );
+    if (workingTreeStatus.hasUncommittedChanges) {
+      logger.info("uncommitted changes: yes");
+      logger.info(`  modified: ${workingTreeStatus.modified.length}`);
+      logger.info(`  added: ${workingTreeStatus.added.length}`);
+      logger.info(`  deleted: ${workingTreeStatus.deleted.length}`);
+    } else {
+      logger.info("uncommitted changes: no");
+    }
   }
   return {
     status: "ok",
@@ -1136,7 +1208,8 @@ async function statusCommand(options) {
           scrDir: sideScrDir,
           scrGlob: sideScrGlob
         }
-      }
+      },
+      workingTree: workingTreeStatus
     }
   };
 }
