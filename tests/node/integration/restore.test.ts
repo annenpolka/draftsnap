@@ -4,7 +4,7 @@ import { appendFile, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ensureCommand } from '../../../src/commands/ensure.js'
 import { restoreCommand } from '../../../src/commands/restore.js'
 import { snapCommand } from '../../../src/commands/snap.js'
@@ -140,17 +140,21 @@ describe('restore CLI interface', () => {
     }
 
     // Test: `restore <rev> <path>` (traditional format)
-    const { stdout } = await execFileAsync('node', [
-      cliPath,
-      'restore',
-      first.data.commit,
-      'scratch/note.md',
-      '--json',
-      '--git-dir',
-      gitDir,
-      '--scratch',
-      scratchDir,
-    ], { cwd: workTree })
+    const { stdout } = await execFileAsync(
+      'node',
+      [
+        cliPath,
+        'restore',
+        first.data.commit,
+        'scratch/note.md',
+        '--json',
+        '--git-dir',
+        gitDir,
+        '--scratch',
+        scratchDir,
+      ],
+      { cwd: workTree },
+    )
 
     const parsed = JSON.parse(stdout.trim())
     expect(parsed.status).toBe('ok')
@@ -190,18 +194,22 @@ describe('restore CLI interface', () => {
     }
 
     // Test: `restore <rev> -- <path>` (with -- separator, used by timeline)
-    const { stdout } = await execFileAsync('node', [
-      cliPath,
-      'restore',
-      first.data.commit,
-      '--git-dir',
-      gitDir,
-      '--scratch',
-      scratchDir,
-      '--json',
-      '--',
-      'scratch/note.md',
-    ], { cwd: workTree })
+    const { stdout } = await execFileAsync(
+      'node',
+      [
+        cliPath,
+        'restore',
+        first.data.commit,
+        '--git-dir',
+        gitDir,
+        '--scratch',
+        scratchDir,
+        '--json',
+        '--',
+        'scratch/note.md',
+      ],
+      { cwd: workTree },
+    )
 
     const parsed = JSON.parse(stdout.trim())
     expect(parsed.status).toBe('ok')
@@ -215,12 +223,7 @@ describe('restore CLI interface', () => {
   it('rejects when path is missing', async () => {
     // Test: `restore <rev>` without path should fail
     try {
-      await execFileAsync('node', [
-        cliPath,
-        'restore',
-        'abc123',
-        '--json',
-      ], { cwd: workTree })
+      await execFileAsync('node', [cliPath, 'restore', 'abc123', '--json'], { cwd: workTree })
       expect.fail('expected command to fail')
     } catch (error) {
       const err = error as { stdout: string; code: number }
