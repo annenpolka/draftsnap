@@ -696,7 +696,7 @@ Basic workflow:
 4) To review or roll back, you may call:
    - \`draftsnap log --json [-- <path>]\` to list history,
    - \`draftsnap diff [REV] --json [-- <path>]\` to inspect changes,
-   - \`draftsnap restore <REV> -- <path> --json\` to restore content into the working tree.
+   - \`draftsnap restore <revision> <path> --json\` to restore content into the working tree.
 
 5) For periodic cleanup, you may run \`draftsnap prune --keep 200 --json\` (or \`--days N\`). Use it sparingly.
 
@@ -1627,12 +1627,17 @@ async function run(argv) {
       }
     });
   });
-  cli.command("restore <revision> <path>", "Restore a file from a prior snapshot").action(async (revision, path, options) => {
+  cli.command("restore <revision> [path]", "Restore a file from a prior snapshot").action(async (revision, path, options) => {
     await executeWithHandling(cli, options, async (ctx) => {
+      const dashDashArgs = options["--"];
+      const resolvedPath = path || dashDashArgs?.[0];
+      if (!resolvedPath) {
+        throw new InvalidArgsError("path is required");
+      }
       const result = await restoreCommand({
         ...ctx,
         revision,
-        path
+        path: resolvedPath
       });
       if (ctx.json) {
         printJson(result);

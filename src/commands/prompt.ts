@@ -15,7 +15,7 @@ Basic workflow:
 4) To review or roll back, you may call:
    - \`draftsnap log --json [-- <path>]\` to list history,
    - \`draftsnap diff [REV] --json [-- <path>]\` to inspect changes,
-   - \`draftsnap restore <REV> -- <path> --json\` to restore content into the working tree.
+   - \`draftsnap restore <revision> <path> --json\` to restore content into the working tree.
 
 5) For periodic cleanup, you may run \`draftsnap prune --keep 200 --json\` (or \`--days N\`). Use it sparingly.
 

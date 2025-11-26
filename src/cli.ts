@@ -10,7 +10,7 @@ import { restoreCommand } from './commands/restore.js'
 import { snapCommand } from './commands/snap.js'
 import { statusCommand } from './commands/status.js'
 import { timelineCommand } from './commands/timeline.js'
-import { DraftsnapError, ExitCode } from './types/errors.js'
+import { DraftsnapError, ExitCode, InvalidArgsError } from './types/errors.js'
 import { createLogger } from './utils/logger.js'
 import { readAllStdin } from './utils/stdin.js'
 
@@ -211,13 +211,20 @@ export async function run(argv: string[]): Promise<void> {
   })
 
   cli
-    .command('restore <revision> <path>', 'Restore a file from a prior snapshot')
+    .command('restore <revision> [path]', 'Restore a file from a prior snapshot')
     .action(async (revision, path, options) => {
       await executeWithHandling(cli, options, async (ctx) => {
+        // Support both `restore <rev> <path>` and `restore <rev> -- <path>` patterns
+        // CAC stores arguments after `--` in options['--'] array
+        const dashDashArgs = options['--'] as string[] | undefined
+        const resolvedPath = path || dashDashArgs?.[0]
+        if (!resolvedPath) {
+          throw new InvalidArgsError('path is required')
+        }
         const result = await restoreCommand({
           ...ctx,
           revision,
-          path,
+          path: resolvedPath,
         })
         if (ctx.json) {
           printJson(result)

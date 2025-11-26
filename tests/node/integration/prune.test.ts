@@ -39,27 +39,23 @@ describe('prune command', () => {
     })
   }
 
-  it(
-    'keeps only the newest commits when above threshold',
-    async () => {
-      await snapshot('purpose: one', 'history.md')
-      await appendFile(join(workTree, scratchDir, 'history.md'), 'two\n')
-      await snapshot('purpose: two', 'history.md')
-      await appendFile(join(workTree, scratchDir, 'history.md'), 'three\n')
-      await snapshot('purpose: three', 'history.md')
+  it('keeps only the newest commits when above threshold', async () => {
+    await snapshot('purpose: one', 'history.md')
+    await appendFile(join(workTree, scratchDir, 'history.md'), 'two\n')
+    await snapshot('purpose: two', 'history.md')
+    await appendFile(join(workTree, scratchDir, 'history.md'), 'three\n')
+    await snapshot('purpose: three', 'history.md')
 
-      const logger = createLogger({ json: true })
-      const result = await pruneCommand({ workTree, gitDir, scratchDir, json: true, logger, keep: 2 })
+    const logger = createLogger({ json: true })
+    const result = await pruneCommand({ workTree, gitDir, scratchDir, json: true, logger, keep: 2 })
 
-      expect(result.code).toBe(ExitCode.OK)
-      expect(result.data.kept).toBe(2)
-      expect(result.data.removed).toBe(1)
+    expect(result.code).toBe(ExitCode.OK)
+    expect(result.data.kept).toBe(2)
+    expect(result.data.removed).toBe(1)
 
-      const log = await logCommand({ workTree, gitDir, scratchDir, json: true, logger })
-      expect(log.data.entries.length).toBeGreaterThan(0)
-    },
-    10000,
-  )
+    const log = await logCommand({ workTree, gitDir, scratchDir, json: true, logger })
+    expect(log.data.entries.length).toBeGreaterThan(0)
+  }, 10000)
 
   it('no-ops when commits within threshold', async () => {
     await snapshot('purpose: only', 'solo.md')
