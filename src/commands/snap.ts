@@ -19,6 +19,8 @@ interface SnapCommandOptions {
   space?: string
   all?: boolean
   stdinContent?: string
+  allowMissing?: boolean
+  lockSignals?: boolean
 }
 
 interface SnapCommandResult {
@@ -83,14 +85,26 @@ function resolveTargetPath(path: string, scratchDir: string, space?: string): st
 }
 
 export async function snapCommand(options: SnapCommandOptions): Promise<SnapCommandResult> {
-  const { workTree, gitDir, scratchDir, json, logger, message, path, all, stdinContent, space } =
-    options
+  const {
+    workTree,
+    gitDir,
+    scratchDir,
+    json,
+    logger,
+    message,
+    path,
+    all,
+    stdinContent,
+    space,
+    allowMissing,
+    lockSignals,
+  } = options
 
   if (all && space) {
     throw new InvalidArgsError('snap --all cannot be combined with --space')
   }
 
-  const lock = new LockManager(gitDir)
+  const lock = new LockManager(gitDir, { handleSignals: lockSignals ?? true })
   await lock.acquire()
 
   try {
@@ -128,8 +142,10 @@ export async function snapCommand(options: SnapCommandOptions): Promise<SnapComm
       }
       targetPath = sanitized
       const absTarget = join(workTree, sanitized)
-      await ensureFileExists(sanitized, absTarget, stdinContent)
-      await git.exec(['add', '-f', '--', sanitized])
+      if (!allowMissing || stdinContent !== undefined) {
+        await ensureFileExists(sanitized, absTarget, stdinContent)
+      }
+      await git.exec(['add', '-A', '-f', '--', sanitized])
       const diff = await git.exec(['diff', '--cached', '--name-only'])
       stagedPaths = diff.stdout
         .split('\n')

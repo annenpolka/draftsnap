@@ -691,6 +691,8 @@ Basic workflow:
    \`draftsnap snap --all -m "<short reason>" --json\` to commit every modified scratch file together.
    Treat exit code 0 as committed. Treat exit code 10 as "no changes" (still a success).
 
+   Optional: run \`draftsnap watch\` to auto-snapshot on file changes (stop with Ctrl+C).
+
 3) Parse only STDOUT as JSON (\`--json\`). Never parse STDERR; it is human-oriented logs.
 
 4) To review or roll back, you may call:
@@ -824,10 +826,12 @@ function wait(ms) {
 }
 var LockManager = class {
   lockDir;
+  handleSignals;
   held = false;
   cleanupRegistered = false;
-  constructor(gitDir) {
+  constructor(gitDir, options = {}) {
     this.lockDir = join4(gitDir, ".draftsnap.lock");
+    this.handleSignals = options.handleSignals ?? true;
   }
   async acquire(options = {}) {
     if (this.held) {
@@ -877,14 +881,16 @@ var LockManager = class {
       this.release();
     };
     process.once("exit", cleanup);
-    process.once("SIGINT", () => {
-      cleanup();
-      process.exit(130);
-    });
-    process.once("SIGTERM", () => {
-      cleanup();
-      process.exit(143);
-    });
+    if (this.handleSignals) {
+      process.once("SIGINT", () => {
+        cleanup();
+        process.exit(130);
+      });
+      process.once("SIGTERM", () => {
+        cleanup();
+        process.exit(143);
+      });
+    }
     this.cleanupRegistered = true;
   }
 };
@@ -972,11 +978,24 @@ function resolveTargetPath(path, scratchDir, space) {
   return posix2.join(scratchDir, normalized);
 }
 async function snapCommand(options) {
-  const { workTree, gitDir, scratchDir, json, logger, message, path, all, stdinContent, space } = options;
+  const {
+    workTree,
+    gitDir,
+    scratchDir,
+    json,
+    logger,
+    message,
+    path,
+    all,
+    stdinContent,
+    space,
+    allowMissing,
+    lockSignals
+  } = options;
   if (all && space) {
     throw new InvalidArgsError("snap --all cannot be combined with --space");
   }
-  const lock = new LockManager(gitDir);
+  const lock = new LockManager(gitDir, { handleSignals: lockSignals ?? true });
   await lock.acquire();
   try {
     await ensureSidecar({ workTree, gitDir, scratchDir });
@@ -1008,8 +1027,10 @@ async function snapCommand(options) {
       }
       targetPath = sanitized;
       const absTarget = join6(workTree, sanitized);
-      await ensureFileExists(sanitized, absTarget, stdinContent);
-      await git.exec(["add", "-f", "--", sanitized]);
+      if (!allowMissing || stdinContent !== void 0) {
+        await ensureFileExists(sanitized, absTarget, stdinContent);
+      }
+      await git.exec(["add", "-A", "-f", "--", sanitized]);
       const diff = await git.exec(["diff", "--cached", "--name-only"]);
       stagedPaths = diff.stdout.split("\n").map((line) => line.trim()).filter(Boolean);
       stagedPaths = stagedPaths.filter((entry) => entry === sanitized);
@@ -1432,6 +1453,63 @@ async function runInteractiveTimeline(params) {
   return 0 /* OK */;
 }
 
+// src/commands/watch.ts
+import { isAbsolute as isAbsolute4, relative as relative4 } from "path";
+import chokidar from "chokidar";
+
+// src/core/watch-lock.ts
+import { existsSync as existsSync2, rmSync as rmSync2 } from "fs";
+import { mkdir as mkdir4, writeFile as writeFile4 } from "fs/promises";
+import { dirname as dirname3, join as join8 } from "path";
+var WATCH_PID_FILENAME = ".draftsnap-watch.pid";
+var WatchPidLock = class {
+  pidPath;
+  held = false;
+  cleanupRegistered = false;
+  constructor(gitDir) {
+    this.pidPath = join8(gitDir, WATCH_PID_FILENAME);
+  }
+  async acquire() {
+    if (this.held) {
+      return;
+    }
+    await mkdir4(dirname3(this.pidPath), { recursive: true });
+    try {
+      await writeFile4(this.pidPath, `${process.pid}
+`, { flag: "wx" });
+      this.held = true;
+      this.registerCleanup();
+    } catch (error) {
+      if (isErrno(error, "EEXIST")) {
+        throw new LockError("another watch process is running");
+      }
+      throw error;
+    }
+  }
+  release() {
+    if (!this.held) {
+      return;
+    }
+    try {
+      if (existsSync2(this.pidPath)) {
+        rmSync2(this.pidPath, { force: true });
+      }
+    } finally {
+      this.held = false;
+      this.cleanupRegistered = false;
+    }
+  }
+  registerCleanup() {
+    if (this.cleanupRegistered) {
+      return;
+    }
+    process.once("exit", () => {
+      this.release();
+    });
+    this.cleanupRegistered = true;
+  }
+};
+
 // src/utils/logger.ts
 function createLogger(options, sink = defaultLogger) {
   const base = sink;
@@ -1465,6 +1543,336 @@ var defaultLogger = {
   error: (message) => console.error(message),
   debug: (message) => console.error(`[debug] ${message}`)
 };
+
+// src/commands/watch.ts
+function createDebounceScheduler(debounceMs, onFire) {
+  const timers = /* @__PURE__ */ new Map();
+  const schedule = (path, action) => {
+    const existing = timers.get(path);
+    if (existing) {
+      clearTimeout(existing.timer);
+    }
+    const timer = setTimeout(() => {
+      timers.delete(path);
+      onFire(path, action);
+    }, debounceMs);
+    timers.set(path, { timer, action });
+  };
+  const cancel = (path) => {
+    const existing = timers.get(path);
+    if (!existing) {
+      return;
+    }
+    clearTimeout(existing.timer);
+    timers.delete(path);
+  };
+  const cancelAll = () => {
+    timers.forEach((entry) => {
+      clearTimeout(entry.timer);
+    });
+    timers.clear();
+  };
+  return { schedule, cancel, cancelAll };
+}
+var DEFAULT_PATTERN = "scratch/**/*.md";
+var DEFAULT_DEBOUNCE = 500;
+function normalizePath2(value) {
+  return value.replace(/\\/g, "/");
+}
+var REGEX_ESCAPE = /[.+^${}()|[\]\\]/g;
+function escapeRegex(value) {
+  return value.replace(REGEX_ESCAPE, "\\$&");
+}
+function globToRegex(pattern) {
+  const normalized = normalizePath2(pattern);
+  let regex = "";
+  let index = 0;
+  while (index < normalized.length) {
+    const char = normalized[index];
+    if (char === "*") {
+      let starCount = 1;
+      while (normalized[index + starCount] === "*") {
+        starCount += 1;
+      }
+      if (starCount > 1) {
+        index += starCount;
+        if (normalized[index] === "/") {
+          regex += "(?:.*\\/)?";
+          index += 1;
+        } else {
+          regex += ".*";
+        }
+        continue;
+      }
+      regex += "[^/]*";
+      index += 1;
+      continue;
+    }
+    if (char === "?") {
+      regex += "[^/]";
+      index += 1;
+      continue;
+    }
+    regex += escapeRegex(char);
+    index += 1;
+  }
+  return new RegExp(`^${regex}$`);
+}
+function createPatternMatcher(pattern) {
+  const matcher = globToRegex(pattern);
+  return (candidate) => matcher.test(normalizePath2(candidate));
+}
+function extractWatchRoot(pattern) {
+  const normalized = normalizePath2(pattern);
+  const segments = normalized.split("/");
+  const root = [];
+  for (const segment of segments) {
+    if (segment.includes("*") || segment.includes("?")) {
+      break;
+    }
+    root.push(segment);
+  }
+  return root.length > 0 ? root.join("/") : normalized;
+}
+function resolvePattern(pattern, workTree) {
+  const normalized = normalizePath2(pattern);
+  if (normalized.split("/").some((segment) => segment === "..")) {
+    throw new InvalidArgsError("pattern must not traverse outside the working tree");
+  }
+  if (isAbsolute4(normalized)) {
+    const rel = normalizePath2(relative4(workTree, normalized));
+    if (!rel || rel.startsWith("..")) {
+      throw new InvalidArgsError("pattern must be within the working tree");
+    }
+    return rel;
+  }
+  return normalized;
+}
+function emitJsonLine(payload) {
+  process.stdout.write(`${JSON.stringify(payload)}
+`);
+}
+async function watchCommand(options) {
+  const {
+    workTree,
+    gitDir,
+    scratchDir,
+    json,
+    quiet,
+    logger,
+    pattern,
+    debounceMs,
+    includeDelete,
+    initialSnap,
+    verbose,
+    signal,
+    env
+  } = options;
+  const resolvedPattern = resolvePattern(pattern ?? DEFAULT_PATTERN, workTree);
+  if (!resolvedPattern || resolvedPattern.trim().length === 0) {
+    throw new InvalidArgsError("pattern is required");
+  }
+  if (resolvedPattern !== scratchDir && !resolvedPattern.startsWith(`${scratchDir}/`)) {
+    throw new InvalidArgsError("pattern must target the scratch directory");
+  }
+  const debounce = debounceMs ?? DEFAULT_DEBOUNCE;
+  if (!Number.isFinite(debounce) || debounce < 0) {
+    throw new InvalidArgsError("--debounce must be >= 0");
+  }
+  const matchesPattern = createPatternMatcher(resolvedPattern);
+  const watchRoot = extractWatchRoot(resolvedPattern);
+  const watchLogger = verbose ? createLogger({ json, quiet, debug: true }) : logger;
+  const watchLock = new WatchPidLock(gitDir);
+  await watchLock.acquire();
+  try {
+    await ensureSidecar({ workTree, gitDir, scratchDir });
+  } catch (error) {
+    watchLock.release();
+    throw error;
+  }
+  const createWatcher = env?.createWatcher ?? ((watchPattern, watchOptions) => {
+    return chokidar.watch(watchPattern, watchOptions);
+  });
+  let snapCount = 0;
+  let stopping = false;
+  const scheduler = createDebounceScheduler(debounce, (path, action) => {
+    enqueueSnap(path, action);
+  });
+  let resolveStop = () => void 0;
+  const stopPromise = new Promise((resolve3) => {
+    resolveStop = resolve3;
+  });
+  const snapQueue = { current: Promise.resolve() };
+  const enqueueSnap = (path, action) => {
+    snapQueue.current = snapQueue.current.then(() => runSnap(path, action)).catch((error) => {
+      handleRuntimeError(error);
+    });
+  };
+  const handleRuntimeError = (error) => {
+    if (error instanceof DraftsnapError) {
+      if (error.code === 10 /* NO_CHANGES */) {
+        return;
+      }
+      if (json) {
+        emitJsonLine({ status: "error", code: error.code, message: error.message });
+      } else {
+        watchLogger.error(error.message);
+      }
+      return;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    if (json) {
+      emitJsonLine({ status: "error", code: 1, message });
+    } else {
+      watchLogger.error(message);
+    }
+  };
+  const runSnap = async (path, action) => {
+    const relativePath = path.startsWith(`${scratchDir}/`) ? path.slice(`${scratchDir}/`.length) : path;
+    const result = await snapCommand({
+      workTree,
+      gitDir,
+      scratchDir,
+      json: true,
+      logger: watchLogger,
+      path,
+      message: `auto: ${relativePath}`,
+      allowMissing: action === "delete",
+      lockSignals: false
+    });
+    if (result.code === 10 /* NO_CHANGES */) {
+      return;
+    }
+    snapCount += 1;
+    if (json) {
+      emitJsonLine({
+        event: "snap",
+        data: {
+          commit: result.data.commit,
+          path: result.data.path,
+          bytes: result.data.bytes
+        }
+      });
+    } else {
+      watchLogger.info(`snap stored ${result.data.path} at ${result.data.commit}`);
+    }
+  };
+  const queueInitialDeletions = async () => {
+    if (initialSnap === false || !includeDelete) {
+      return;
+    }
+    const git = createGitClient({ workTree, gitDir });
+    const { stdout } = await git.exec(["status", "--porcelain"]);
+    const parsed = parseGitStatus(stdout);
+    parsed.deleted.map((entry) => normalizePath2(entry)).forEach((entry) => {
+      const sanitized = sanitizeTargetPath(entry, workTree, scratchDir);
+      if (!sanitized || !matchesPattern(sanitized)) {
+        return;
+      }
+      scheduler.schedule(sanitized, "delete");
+    });
+  };
+  const stop = async (reason) => {
+    if (stopping) {
+      return;
+    }
+    stopping = true;
+    scheduler.cancelAll();
+    detachSignals();
+    await Promise.resolve(watcher.close()).catch(() => void 0);
+    await snapQueue.current;
+    watchLock.release();
+    if (json) {
+      emitJsonLine({ event: "stopped", data: { reason, snaps_count: snapCount } });
+    } else {
+      watchLogger.info(`watch stopped (${snapCount} snaps)`);
+    }
+    resolveStop({
+      status: "ok",
+      code: 0 /* OK */,
+      data: {
+        snapsCount: snapCount,
+        pattern: resolvedPattern,
+        debounce
+      }
+    });
+  };
+  const handleEvent = (eventPath, action) => {
+    if (stopping) {
+      return;
+    }
+    const normalized = normalizePath2(eventPath);
+    let sanitized = sanitizeTargetPath(normalized, workTree, scratchDir);
+    if (!sanitized && !isAbsolute4(normalized)) {
+      const prefixed = normalizePath2(`${scratchDir}/${normalized}`);
+      sanitized = sanitizeTargetPath(prefixed, workTree, scratchDir);
+    }
+    if (!sanitized) {
+      watchLogger.debug(`ignored non-scratch path: ${normalized}`);
+      return;
+    }
+    if (!matchesPattern(sanitized)) {
+      return;
+    }
+    if (action === "delete" && !includeDelete) {
+      scheduler.cancel(sanitized);
+      return;
+    }
+    scheduler.schedule(sanitized, action);
+  };
+  let watcher;
+  try {
+    watcher = createWatcher(watchRoot, {
+      cwd: workTree,
+      ignoreInitial: initialSnap === false
+    });
+  } catch (error) {
+    watchLock.release();
+    throw error;
+  }
+  watcher.on("add", (path) => handleEvent(path, "update"));
+  watcher.on("change", (path) => handleEvent(path, "update"));
+  watcher.on("unlink", (path) => handleEvent(path, "delete"));
+  watcher.on("error", (error) => handleRuntimeError(error));
+  watcher.on("ready", () => {
+    void queueInitialDeletions().catch((error) => {
+      handleRuntimeError(error);
+    });
+    env?.onReady?.();
+  });
+  if (json) {
+    emitJsonLine({ event: "started", data: { pattern: resolvedPattern, debounce } });
+  } else {
+    watchLogger.info(`watching ${resolvedPattern} (debounce ${debounce}ms)`);
+  }
+  const handleSigint = () => {
+    void stop("SIGINT");
+  };
+  const handleSigterm = () => {
+    void stop("SIGTERM");
+  };
+  const detachSignals = () => {
+    process.off("SIGINT", handleSigint);
+    process.off("SIGTERM", handleSigterm);
+    if (signal) {
+      signal.removeEventListener("abort", handleAbort);
+    }
+  };
+  const handleAbort = () => {
+    const reason = typeof signal?.reason === "string" ? signal.reason : "ABORT";
+    void stop(reason);
+  };
+  process.once("SIGINT", handleSigint);
+  process.once("SIGTERM", handleSigterm);
+  if (signal) {
+    if (signal.aborted) {
+      handleAbort();
+    } else {
+      signal.addEventListener("abort", handleAbort);
+    }
+  }
+  return stopPromise;
+}
 
 // src/utils/stdin.ts
 async function readAllStdin() {
@@ -1577,6 +1985,22 @@ async function run(argv) {
       if (ctx.json) {
         printJson(result);
       }
+    });
+  });
+  cli.command("watch [pattern]", "Watch scratch files and auto-snap").option("--debounce <ms>", "Wait time before snapping", { default: "500" }).option("--include-delete", "Include deletions as snap triggers").option("--initial-snap", "Snapshot existing changes on start", { default: true }).option("--verbose", "Enable detailed logs").action(async (pattern, options) => {
+    await executeWithHandling(cli, options, async (ctx) => {
+      const debounce = parseOptionalNumber(options.debounce);
+      if (options.debounce !== void 0 && debounce === void 0) {
+        throw new InvalidArgsError("--debounce must be an integer");
+      }
+      await watchCommand({
+        ...ctx,
+        pattern,
+        debounceMs: debounce ?? void 0,
+        includeDelete: toBoolean(options.includeDelete),
+        initialSnap: options.initialSnap !== false,
+        verbose: toBoolean(options.verbose)
+      });
     });
   });
   cli.command("log [path]", "List snapshots with metadata").option("--timeline", "Show timeline summary for a document").option("--since <n>", "Number of commits to include").action(async (path, options) => {

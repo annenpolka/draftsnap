@@ -10,6 +10,8 @@ Basic workflow:
    \`draftsnap snap --all -m "<short reason>" --json\` to commit every modified scratch file together.
    Treat exit code 0 as committed. Treat exit code 10 as "no changes" (still a success).
 
+   Optional: run \`draftsnap watch\` to auto-snapshot on file changes (stop with Ctrl+C).
+
 3) Parse only STDOUT as JSON (\`--json\`). Never parse STDERR; it is human-oriented logs.
 
 4) To review or roll back, you may call:

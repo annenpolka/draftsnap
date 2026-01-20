@@ -10,6 +10,7 @@ import { restoreCommand } from './commands/restore.js'
 import { snapCommand } from './commands/snap.js'
 import { statusCommand } from './commands/status.js'
 import { timelineCommand } from './commands/timeline.js'
+import { watchCommand } from './commands/watch.js'
 import { DraftsnapError, ExitCode, InvalidArgsError } from './types/errors.js'
 import { createLogger } from './utils/logger.js'
 import { readAllStdin } from './utils/stdin.js'
@@ -143,6 +144,29 @@ export async function run(argv: string[]): Promise<void> {
         if (ctx.json) {
           printJson(result)
         }
+      })
+    })
+
+  cli
+    .command('watch [pattern]', 'Watch scratch files and auto-snap')
+    .option('--debounce <ms>', 'Wait time before snapping', { default: '500' })
+    .option('--include-delete', 'Include deletions as snap triggers')
+    .option('--initial-snap', 'Snapshot existing changes on start', { default: true })
+    .option('--verbose', 'Enable detailed logs')
+    .action(async (pattern, options) => {
+      await executeWithHandling(cli, options, async (ctx) => {
+        const debounce = parseOptionalNumber(options.debounce)
+        if (options.debounce !== undefined && debounce === undefined) {
+          throw new InvalidArgsError('--debounce must be an integer')
+        }
+        await watchCommand({
+          ...ctx,
+          pattern,
+          debounceMs: debounce ?? undefined,
+          includeDelete: toBoolean(options.includeDelete),
+          initialSnap: options.initialSnap !== false,
+          verbose: toBoolean(options.verbose),
+        })
       })
     })
 

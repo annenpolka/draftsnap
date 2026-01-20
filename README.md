@@ -103,6 +103,14 @@ echo "More detail" >> scratch/notes.md
 draftsnap snap scratch/notes.md -m "purpose: add detail"
 ```
 
+Auto-snapshot while editing:
+
+```bash
+draftsnap watch
+# or:
+draftsnap watch scratch/**/*.md --debounce 1000 --include-delete
+```
+
 Explore with timeline:
 
 ```bash
@@ -128,6 +136,7 @@ Timeline controls:
 | `draftsnap ensure` | Initialize the sidecar repository |
 | `draftsnap snap <path> -m "reason"` | Snapshot a file |
 | `draftsnap snap --all -m "reason"` | Snapshot all modified scratch files |
+| `draftsnap watch [pattern]` | Watch scratch files and auto-snap |
 | `draftsnap timeline [-- <path>]` | Browse history interactively |
 | `draftsnap log [--json]` | Show history as text or JSON |
 | `draftsnap restore <rev> -- <path>` | Restore a file from a snapshot |
@@ -211,6 +220,8 @@ export DRAFTSNAP_GIT_DIR=.git-scratch # default: .git-scratch
 ---
 
 ## Development
+
+Requires Node.js 20.19+.
 
 ```bash
 pnpm install --frozen-lockfile         # install dependencies at repo root

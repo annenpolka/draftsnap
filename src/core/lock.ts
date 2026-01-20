@@ -8,6 +8,10 @@ export interface AcquireOptions {
   retryMs?: number
 }
 
+export interface LockManagerOptions {
+  handleSignals?: boolean
+}
+
 const DEFAULT_TIMEOUT = 5_000
 const DEFAULT_RETRY = 100
 
@@ -17,11 +21,13 @@ function wait(ms: number): Promise<void> {
 
 export class LockManager {
   private readonly lockDir: string
+  private readonly handleSignals: boolean
   private held = false
   private cleanupRegistered = false
 
-  constructor(gitDir: string) {
+  constructor(gitDir: string, options: LockManagerOptions = {}) {
     this.lockDir = join(gitDir, '.draftsnap.lock')
+    this.handleSignals = options.handleSignals ?? true
   }
 
   async acquire(options: AcquireOptions = {}): Promise<void> {
@@ -85,14 +91,16 @@ export class LockManager {
       this.release()
     }
     process.once('exit', cleanup)
-    process.once('SIGINT', () => {
-      cleanup()
-      process.exit(130)
-    })
-    process.once('SIGTERM', () => {
-      cleanup()
-      process.exit(143)
-    })
+    if (this.handleSignals) {
+      process.once('SIGINT', () => {
+        cleanup()
+        process.exit(130)
+      })
+      process.once('SIGTERM', () => {
+        cleanup()
+        process.exit(143)
+      })
+    }
     this.cleanupRegistered = true
   }
 }
