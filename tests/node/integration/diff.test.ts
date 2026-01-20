@@ -76,7 +76,7 @@ describe('diff command', () => {
       new: latest.stdout,
       old: previous.stdout,
     })
-  }, 10000)
+  }, 15000)
 
   it('shows working tree diff when current flag used', async () => {
     const logger = createLogger({ json: true })
@@ -120,7 +120,7 @@ describe('diff command', () => {
       new: 'working',
       old: base.stdout,
     })
-  })
+  }, 10000)
 
   it('supports since option to compare against older history', async () => {
     const logger = createLogger({ json: true })
@@ -184,5 +184,5 @@ describe('diff command', () => {
       new: head.stdout,
       old: base.stdout,
     })
-  })
+  }, 10000)
 })

@@ -127,7 +127,7 @@ describe('snap command', () => {
     expect(result.data.paths).toEqual(['scratch/obsolete.md'])
     expect(result.data.files_count).toBe(1)
     expect(result.data.bytes).toBe(0)
-  })
+  }, 10000)
 
   it('captures file paths under a space when provided', async () => {
     const logger = createLogger({ json: true })

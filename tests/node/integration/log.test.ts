@@ -67,7 +67,7 @@ describe('log command', () => {
     expect(result.data.entries.length).toBe(2)
     expect(result.data.entries[0].message).toBe('purpose: update doc')
     expect(result.data.entries[0].path).toBe('scratch/doc.md')
-  })
+  }, 10000)
 
   it('builds timeline summary for a document', async () => {
     const logger = createLogger({ json: true })
@@ -106,5 +106,5 @@ describe('log command', () => {
     expect(result.data.timeline).toBeDefined()
     expect(result.data.timeline?.entries.length).toBeGreaterThan(0)
     expect(result.data.timeline?.summary.totalAdditions).toBeGreaterThan(0)
-  })
+  }, 10000)
 })

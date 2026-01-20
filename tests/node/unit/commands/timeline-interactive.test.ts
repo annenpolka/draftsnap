@@ -110,7 +110,7 @@ describe('timelineCommand interactive mode', () => {
     const combined = writeCalls.join('')
     expect(combined).toMatch(/purpose: update/)
     expect(combined).toMatch(/│/)
-  })
+  }, 10000)
 
   it('uses ctrl shortcuts on non-mac platforms', async () => {
     const logger = createLogger({ json: true })

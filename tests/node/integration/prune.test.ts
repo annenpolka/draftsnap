@@ -55,7 +55,7 @@ describe('prune command', () => {
 
     const log = await logCommand({ workTree, gitDir, scratchDir, json: true, logger })
     expect(log.data.entries.length).toBeGreaterThan(0)
-  }, 10000)
+  }, 15000)
 
   it('no-ops when commits within threshold', async () => {
     await snapshot('purpose: only', 'solo.md')

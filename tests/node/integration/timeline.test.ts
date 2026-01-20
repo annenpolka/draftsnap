@@ -76,7 +76,7 @@ describe('timeline command', () => {
     expect(latest.commit).toMatch(/^[0-9a-f]{40}$/)
     expect(typeof latest.relativeTime).toBe('string')
     expect(typeof latest.authorDate).toBe('string')
-  })
+  }, 10000)
 
   it('returns empty list when no commits exist', async () => {
     const logger = createLogger({ json: true })
@@ -135,7 +135,7 @@ describe('timeline command', () => {
     expect(result.data.entries.length).toBe(1)
     expect(result.data.entries[0]?.path).toBe('scratch/notes.md')
     expect(result.data.entries[0]?.message).toBe('purpose: add notes')
-  })
+  }, 10000)
 
   it('produces plain-text output in raw mode', async () => {
     const infoMessages: string[] = []

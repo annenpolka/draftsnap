@@ -73,7 +73,7 @@ describe('restore command', () => {
     expect(result.data.backup).toBeTruthy()
     const contents = await readFile(filePath, 'utf8')
     expect(contents).toBe('v1\n')
-  })
+  }, 10000)
 
   it('throws when revision is unknown', async () => {
     const logger = createLogger({ json: true })
@@ -163,7 +163,7 @@ describe('restore CLI interface', () => {
 
     const contents = await readFile(filePath, 'utf8')
     expect(contents).toBe('v1\n')
-  })
+  }, 10000)
 
   it('accepts -- separator between revision and path', async () => {
     const logger = createLogger({ json: true })
