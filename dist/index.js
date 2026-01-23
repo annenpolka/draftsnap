@@ -1503,9 +1503,12 @@ var WatchPidLock = class {
     if (this.cleanupRegistered) {
       return;
     }
-    process.once("exit", () => {
+    const cleanup = () => {
       this.release();
-    });
+    };
+    process.once("exit", cleanup);
+    process.once("SIGINT", cleanup);
+    process.once("SIGTERM", cleanup);
     this.cleanupRegistered = true;
   }
 };
