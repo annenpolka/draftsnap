@@ -877,11 +877,11 @@ var LockManager = class {
     if (this.cleanupRegistered) {
       return;
     }
-    const cleanup = () => {
-      this.release();
-    };
-    process.once("exit", cleanup);
     if (this.handleSignals) {
+      const cleanup = () => {
+        this.release();
+      };
+      process.once("exit", cleanup);
       process.once("SIGINT", () => {
         cleanup();
         process.exit(130);

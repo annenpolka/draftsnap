@@ -1,6 +1,6 @@
 {
   "name": "draftsnap-node",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "type": "module",
   "description": "Node.js rewrite of the draftsnap CLI",
   "bin": {
