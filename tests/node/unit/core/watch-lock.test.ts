@@ -37,4 +37,30 @@ describe('WatchPidLock', () => {
 
     lockA.release()
   })
+
+  describe('signal handling', () => {
+    it('releases the lock when SIGINT is received', async () => {
+      const lock = new WatchPidLock(gitDir)
+      await lock.acquire()
+      expect(existsSync(join(gitDir, '.draftsnap-watch.pid'))).toBe(true)
+
+      // Emit SIGINT to trigger the signal handler
+      process.emit('SIGINT')
+
+      // Lock file should be released
+      expect(existsSync(join(gitDir, '.draftsnap-watch.pid'))).toBe(false)
+    })
+
+    it('releases the lock when SIGTERM is received', async () => {
+      const lock = new WatchPidLock(gitDir)
+      await lock.acquire()
+      expect(existsSync(join(gitDir, '.draftsnap-watch.pid'))).toBe(true)
+
+      // Emit SIGTERM to trigger the signal handler
+      process.emit('SIGTERM')
+
+      // Lock file should be released
+      expect(existsSync(join(gitDir, '.draftsnap-watch.pid'))).toBe(false)
+    })
+  })
 })
