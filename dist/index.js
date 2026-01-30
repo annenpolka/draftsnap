@@ -71,60 +71,31 @@ function createGitClient({ workTree, gitDir }) {
 }
 
 // src/core/repository.ts
-import { mkdir, readdir, readFile as readFile2, stat as stat2, writeFile } from "fs/promises";
-import { join as join2, relative } from "path";
+import { mkdir, readdir, readFile, stat, writeFile } from "fs/promises";
+import { join, relative } from "path";
 
 // src/utils/gitdir.ts
-import { readFile, stat } from "fs/promises";
-import { isAbsolute, join, resolve } from "path";
-
-// src/utils/fs.ts
-function isErrno(error, code) {
-  return !!error && typeof error === "object" && "code" in error && error.code === code;
-}
-
-// src/utils/gitdir.ts
-function parseGitdir(content) {
-  for (const rawLine of content.split("\n")) {
-    const line = rawLine.trim();
-    if (!line) {
-      continue;
-    }
-    const lower = line.toLowerCase();
-    if (lower.startsWith("gitdir:")) {
-      return line.slice("gitdir:".length).trim();
-    }
-  }
-  return null;
-}
+import { execFile as execFile2 } from "child_process";
+import { resolve } from "path";
+import { promisify as promisify2 } from "util";
+var execFileAsync2 = promisify2(execFile2);
 async function resolveMainGitDir(workTree) {
-  const dotGit = join(workTree, ".git");
+  const cwd = resolve(workTree);
   try {
-    const stats = await stat(dotGit);
-    if (stats.isDirectory()) {
-      return dotGit;
-    }
-    if (stats.isFile()) {
-      const content = await readFile(dotGit, "utf8");
-      const gitdir = parseGitdir(content);
-      if (!gitdir) {
-        throw new Error(`unable to parse gitdir from ${dotGit}`);
-      }
-      return isAbsolute(gitdir) ? gitdir : resolve(workTree, gitdir);
-    }
+    const { stdout } = await execFileAsync2("git", ["rev-parse", "--absolute-git-dir"], {
+      cwd,
+      encoding: "utf8"
+    });
+    return stdout.trimEnd();
+  } catch {
     return null;
-  } catch (error) {
-    if (isErrno(error, "ENOENT")) {
-      return null;
-    }
-    throw error;
   }
 }
 
 // src/core/repository.ts
 async function pathExists(path) {
   try {
-    await stat2(path);
+    await stat(path);
     return true;
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
@@ -146,7 +117,7 @@ async function listFiles(root) {
       throw error;
     }
     for (const entry of entries) {
-      const nextPath = join2(current, entry.name);
+      const nextPath = join(current, entry.name);
       const nextPrefix = prefix ? `${prefix}/${entry.name}` : entry.name;
       if (entry.isDirectory()) {
         await walk(nextPath, nextPrefix);
@@ -163,8 +134,8 @@ async function ensureExclude(options) {
   if (!mainGitDir) {
     return;
   }
-  const excludePath = join2(mainGitDir, "info", "exclude");
-  const excludeDir = join2(mainGitDir, "info");
+  const excludePath = join(mainGitDir, "info", "exclude");
+  const excludeDir = join(mainGitDir, "info");
   await mkdir(excludeDir, { recursive: true });
   const gitDirRelative = relative(workTree, gitDir) || gitDir;
   const desired = /* @__PURE__ */ new Set([
@@ -173,7 +144,7 @@ async function ensureExclude(options) {
   ]);
   let current = "";
   if (await pathExists(excludePath)) {
-    current = await readFile2(excludePath, "utf8");
+    current = await readFile(excludePath, "utf8");
     for (const line of current.split("\n")) {
       if (line.trim()) {
         desired.delete(line.trim());
@@ -188,13 +159,13 @@ async function ensureExclude(options) {
   await writeFile(excludePath, current + append);
 }
 async function ensureSidecarExclude(gitDir, scratchDir) {
-  const excludeDir = join2(gitDir, "info");
-  const excludePath = join2(excludeDir, "exclude");
+  const excludeDir = join(gitDir, "info");
+  const excludePath = join(excludeDir, "exclude");
   await mkdir(excludeDir, { recursive: true });
   let current = "";
   const existingLines = /* @__PURE__ */ new Set();
   if (await pathExists(excludePath)) {
-    current = await readFile2(excludePath, "utf8");
+    current = await readFile(excludePath, "utf8");
     for (const line of current.split("\n")) {
       if (line.trim()) {
         existingLines.add(line.trim());
@@ -217,15 +188,15 @@ async function ensureSidecar(options) {
   const { workTree, gitDir, scratchDir } = options;
   const git = createGitClient({ workTree, gitDir });
   let initialized = false;
-  if (!await pathExists(join2(gitDir, "HEAD"))) {
+  if (!await pathExists(join(gitDir, "HEAD"))) {
     await git.exec(["init", "--quiet"]);
     initialized = true;
   }
-  await mkdir(join2(workTree, scratchDir), { recursive: true });
+  await mkdir(join(workTree, scratchDir), { recursive: true });
   const mainGitDir = await resolveMainGitDir(workTree);
   await ensureExclude({ workTree, scratchDir, gitDir, mainGitDir });
   await ensureSidecarExclude(gitDir, scratchDir);
-  const filesRoot = join2(workTree, scratchDir);
+  const filesRoot = join(workTree, scratchDir);
   const files = await listFiles(filesRoot);
   const prefixed = files.map((file) => `${scratchDir}/${file}`);
   return {
@@ -267,14 +238,14 @@ var NotInitializedError = class extends DraftsnapError {
 };
 
 // src/utils/path.ts
-import { isAbsolute as isAbsolute2, posix, relative as relative2, resolve as resolve2, sep } from "path";
+import { isAbsolute, posix, relative as relative2, resolve as resolve2, sep } from "path";
 function toPosixPath(value) {
   return value.split(sep).join(posix.sep);
 }
 function sanitizeTargetPath(candidate, workTree, scratchDir) {
   const workRoot = resolve2(workTree);
   const scratchRoot = resolve2(workRoot, scratchDir);
-  const targetAbs = isAbsolute2(candidate) ? resolve2(candidate) : resolve2(workRoot, candidate);
+  const targetAbs = isAbsolute(candidate) ? resolve2(candidate) : resolve2(workRoot, candidate);
   const rel = relative2(scratchRoot, targetAbs);
   if (!rel || rel.startsWith("..") || rel === "") {
     return null;
@@ -746,12 +717,12 @@ function promptCommand(json) {
 }
 
 // src/commands/prune.ts
-import { execFile as execFile2 } from "child_process";
+import { execFile as execFile3 } from "child_process";
 import { mkdtemp, rename, rm } from "fs/promises";
 import { tmpdir } from "os";
-import { join as join3 } from "path";
-import { promisify as promisify2 } from "util";
-var execFileAsync2 = promisify2(execFile2);
+import { join as join2 } from "path";
+import { promisify as promisify3 } from "util";
+var execFileAsync3 = promisify3(execFile3);
 async function pruneCommand(options) {
   const { workTree, gitDir, scratchDir, json, logger, keep } = options;
   if (!Number.isInteger(keep) || keep < 1) {
@@ -780,9 +751,9 @@ async function pruneCommand(options) {
   }
   const removeCount = commits.length - keep;
   const removedCommits = commits.slice(0, removeCount);
-  const tmpClone = await mkdtemp(join3(tmpdir(), "draftsnap-node-prune-"));
+  const tmpClone = await mkdtemp(join2(tmpdir(), "draftsnap-node-prune-"));
   try {
-    await execFileAsync2(
+    await execFileAsync3(
       "git",
       ["clone", "--quiet", "--depth", String(keep), "--no-checkout", gitDir, tmpClone],
       {
@@ -791,7 +762,7 @@ async function pruneCommand(options) {
       }
     );
     await rm(gitDir, { recursive: true, force: true });
-    await rename(join3(tmpClone, ".git"), gitDir);
+    await rename(join2(tmpClone, ".git"), gitDir);
     const refreshedGit = createGitClient({ workTree, gitDir });
     await refreshedGit.exec(["reset", "--hard"]);
     if (!json) {
@@ -812,13 +783,13 @@ async function pruneCommand(options) {
 }
 
 // src/commands/restore.ts
-import { rename as rename2, stat as stat3, writeFile as writeFile2 } from "fs/promises";
-import { join as join5 } from "path";
+import { rename as rename2, stat as stat2, writeFile as writeFile2 } from "fs/promises";
+import { join as join4 } from "path";
 
 // src/core/lock.ts
 import { existsSync, rmSync } from "fs";
 import { mkdir as mkdir2 } from "fs/promises";
-import { dirname, join as join4 } from "path";
+import { dirname, join as join3 } from "path";
 var DEFAULT_TIMEOUT = 5e3;
 var DEFAULT_RETRY = 100;
 function wait(ms) {
@@ -830,7 +801,7 @@ var LockManager = class {
   held = false;
   cleanupRegistered = false;
   constructor(gitDir, options = {}) {
-    this.lockDir = join4(gitDir, ".draftsnap.lock");
+    this.lockDir = join3(gitDir, ".draftsnap.lock");
     this.handleSignals = options.handleSignals ?? true;
   }
   async acquire(options = {}) {
@@ -910,9 +881,9 @@ async function restoreCommand(options) {
     const blob = await git.exec(["show", `${revision}:${sanitized}`], { trim: false }).catch(() => {
       throw new InvalidArgsError(`unknown revision or path: ${revision}`);
     });
-    const absPath = join5(workTree, sanitized);
+    const absPath = join4(workTree, sanitized);
     let backup = null;
-    const existing = await stat3(absPath).catch(() => null);
+    const existing = await stat2(absPath).catch(() => null);
     if (existing) {
       const backupPath = `${absPath}.draftsnap.bak.${Date.now()}`;
       await rename2(absPath, backupPath);
@@ -942,8 +913,15 @@ async function restoreCommand(options) {
 }
 
 // src/commands/snap.ts
-import { mkdir as mkdir3, stat as stat4, writeFile as writeFile3 } from "fs/promises";
-import { dirname as dirname2, isAbsolute as isAbsolute3, join as join6, posix as posix2 } from "path";
+import { mkdir as mkdir3, stat as stat3, writeFile as writeFile3 } from "fs/promises";
+import { dirname as dirname2, isAbsolute as isAbsolute2, join as join5, posix as posix2 } from "path";
+
+// src/utils/fs.ts
+function isErrno(error, code) {
+  return !!error && typeof error === "object" && "code" in error && error.code === code;
+}
+
+// src/commands/snap.ts
 async function ensureFileExists(_targetPath, absPath, stdinContent) {
   await mkdir3(dirname2(absPath), { recursive: true });
   if (stdinContent !== void 0) {
@@ -951,7 +929,7 @@ async function ensureFileExists(_targetPath, absPath, stdinContent) {
     return;
   }
   try {
-    await stat4(absPath);
+    await stat3(absPath);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
       await writeFile3(absPath, "");
@@ -965,7 +943,7 @@ function normalizePath(value) {
 }
 function resolveTargetPath(path, scratchDir, space) {
   const normalized = normalizePath(path);
-  if (isAbsolute3(path)) {
+  if (isAbsolute2(path)) {
     return path;
   }
   const scratchPrefix = normalizePath(`${scratchDir}/`);
@@ -1026,7 +1004,7 @@ async function snapCommand(options) {
         throw new InvalidArgsError("path must be within scratch directory");
       }
       targetPath = sanitized;
-      const absTarget = join6(workTree, sanitized);
+      const absTarget = join5(workTree, sanitized);
       if (!allowMissing || stdinContent !== void 0) {
         await ensureFileExists(sanitized, absTarget, stdinContent);
       }
@@ -1048,7 +1026,7 @@ async function snapCommand(options) {
     let totalBytes = 0;
     for (const staged of stagedPaths) {
       try {
-        const size = await stat4(join6(workTree, staged));
+        const size = await stat3(join5(workTree, staged));
         totalBytes += size.size;
       } catch (error) {
         if (isErrno(error, "ENOENT")) {
@@ -1085,8 +1063,8 @@ async function snapCommand(options) {
 }
 
 // src/commands/status.ts
-import { readFile as readFile3, stat as stat5 } from "fs/promises";
-import { join as join7, relative as relative3 } from "path";
+import { readFile as readFile2, stat as stat4 } from "fs/promises";
+import { join as join6, relative as relative3 } from "path";
 function parseGitStatus(output) {
   const lines = output.split("\n").filter(Boolean);
   const modified = /* @__PURE__ */ new Set();
@@ -1128,7 +1106,7 @@ function parseGitStatus(output) {
 }
 async function exists(path) {
   try {
-    await stat5(path);
+    await stat4(path);
     return true;
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
@@ -1139,11 +1117,11 @@ async function exists(path) {
 }
 async function statusCommand(options) {
   const { workTree, gitDir, scratchDir, json, logger } = options;
-  const headExists = await exists(join7(gitDir, "HEAD"));
-  const lockExists = await exists(join7(gitDir, ".draftsnap.lock"));
+  const headExists = await exists(join6(gitDir, "HEAD"));
+  const lockExists = await exists(join6(gitDir, ".draftsnap.lock"));
   async function readExcludeLines(path) {
     try {
-      const content = await readFile3(path, "utf8");
+      const content = await readFile2(path, "utf8");
       return new Set(
         content.split("\n").map((line) => line.trim()).filter(Boolean)
       );
@@ -1155,13 +1133,13 @@ async function statusCommand(options) {
     }
   }
   const mainGitDir = await resolveMainGitDir(workTree);
-  const mainExclude = mainGitDir ? await readExcludeLines(join7(mainGitDir, "info", "exclude")) : /* @__PURE__ */ new Set();
+  const mainExclude = mainGitDir ? await readExcludeLines(join6(mainGitDir, "info", "exclude")) : /* @__PURE__ */ new Set();
   const gitDirRelative = relative3(workTree, gitDir) || gitDir;
   const mainGitDirEntry = mainExclude.has(
     `${gitDirRelative}${gitDirRelative.endsWith("/") ? "" : "/"}`
   );
   const mainScrDir = mainExclude.has(`${scratchDir}/`);
-  const sideExcludePath = join7(gitDir, "info", "exclude");
+  const sideExcludePath = join6(gitDir, "info", "exclude");
   const sideExclude = await readExcludeLines(sideExcludePath);
   const sideWildcard = sideExclude.has("*");
   const sideScrDir = sideExclude.has(`!${scratchDir}/`);
@@ -1236,8 +1214,8 @@ async function statusCommand(options) {
 }
 
 // src/commands/timeline.ts
-import { execFile as execFile3, spawn as spawnProcess } from "child_process";
-import { promisify as promisify3 } from "util";
+import { execFile as execFile4, spawn as spawnProcess } from "child_process";
+import { promisify as promisify4 } from "util";
 function decideTimelineMode(context) {
   if (context.json) {
     return "json";
@@ -1388,11 +1366,11 @@ async function timelineCommand(options) {
     data: { mode: "interactive", entries }
   };
 }
-var execFileAsync3 = promisify3(execFile3);
+var execFileAsync4 = promisify4(execFile4);
 async function commandExists(command) {
   const checker = process.platform === "win32" ? "where" : "which";
   try {
-    await execFileAsync3(checker, [command]);
+    await execFileAsync4(checker, [command]);
     return true;
   } catch {
     return false;
@@ -1454,20 +1432,20 @@ async function runInteractiveTimeline(params) {
 }
 
 // src/commands/watch.ts
-import { isAbsolute as isAbsolute4, relative as relative4 } from "path";
+import { isAbsolute as isAbsolute3, relative as relative4 } from "path";
 import chokidar from "chokidar";
 
 // src/core/watch-lock.ts
 import { existsSync as existsSync2, rmSync as rmSync2 } from "fs";
 import { mkdir as mkdir4, writeFile as writeFile4 } from "fs/promises";
-import { dirname as dirname3, join as join8 } from "path";
+import { dirname as dirname3, join as join7 } from "path";
 var WATCH_PID_FILENAME = ".draftsnap-watch.pid";
 var WatchPidLock = class {
   pidPath;
   held = false;
   cleanupRegistered = false;
   constructor(gitDir) {
-    this.pidPath = join8(gitDir, WATCH_PID_FILENAME);
+    this.pidPath = join7(gitDir, WATCH_PID_FILENAME);
   }
   async acquire() {
     if (this.held) {
@@ -1642,7 +1620,7 @@ function resolvePattern(pattern, workTree) {
   if (normalized.split("/").some((segment) => segment === "..")) {
     throw new InvalidArgsError("pattern must not traverse outside the working tree");
   }
-  if (isAbsolute4(normalized)) {
+  if (isAbsolute3(normalized)) {
     const rel = normalizePath2(relative4(workTree, normalized));
     if (!rel || rel.startsWith("..")) {
       throw new InvalidArgsError("pattern must be within the working tree");
@@ -1806,7 +1784,7 @@ async function watchCommand(options) {
     }
     const normalized = normalizePath2(eventPath);
     let sanitized = sanitizeTargetPath(normalized, workTree, scratchDir);
-    if (!sanitized && !isAbsolute4(normalized)) {
+    if (!sanitized && !isAbsolute3(normalized)) {
       const prefixed = normalizePath2(`${scratchDir}/${normalized}`);
       sanitized = sanitizeTargetPath(prefixed, workTree, scratchDir);
     }
