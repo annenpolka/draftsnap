@@ -1,5 +1,5 @@
 import { readFile, stat } from 'node:fs/promises'
-import { isAbsolute, join, resolve } from 'node:path'
+import { dirname, isAbsolute, join, parse, resolve } from 'node:path'
 import { isErrno } from './fs.js'
 
 function parseGitdir(content: string): string | null {
@@ -16,8 +16,8 @@ function parseGitdir(content: string): string | null {
   return null
 }
 
-export async function resolveMainGitDir(workTree: string): Promise<string | null> {
-  const dotGit = join(workTree, '.git')
+async function resolveGitDirAt(dir: string): Promise<string | null> {
+  const dotGit = join(dir, '.git')
 
   try {
     const stats = await stat(dotGit)
@@ -31,7 +31,7 @@ export async function resolveMainGitDir(workTree: string): Promise<string | null
       if (!gitdir) {
         throw new Error(`unable to parse gitdir from ${dotGit}`)
       }
-      return isAbsolute(gitdir) ? gitdir : resolve(workTree, gitdir)
+      return isAbsolute(gitdir) ? gitdir : resolve(dir, gitdir)
     }
 
     return null
@@ -40,5 +40,21 @@ export async function resolveMainGitDir(workTree: string): Promise<string | null
       return null
     }
     throw error
+  }
+}
+
+export async function resolveMainGitDir(workTree: string): Promise<string | null> {
+  let dir = resolve(workTree)
+  const { root } = parse(dir)
+
+  while (true) {
+    const result = await resolveGitDirAt(dir)
+    if (result) {
+      return result
+    }
+    if (dir === root) {
+      return null
+    }
+    dir = dirname(dir)
   }
 }
